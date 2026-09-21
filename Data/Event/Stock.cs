@@ -220,12 +220,19 @@ namespace KartRider
                 FileName.Load(Nickname);
             }
             var filename = FileName.FileNames[Nickname];
-            if (!File.Exists(filename.NewKart_LoadFile))
+            // 1. 永久车辆（NewKart.json）
+            if (File.Exists(filename.NewKart_LoadFile))
             {
-                return false;
+                var newkart = JsonHelper.DeserializeNoBom<List<NewKart>>(filename.NewKart_LoadFile) ?? new List<NewKart>();
+                if (newkart.Any(k => k.KartID == Kart)) return true;
             }
-            var newkart = JsonHelper.DeserializeNoBom<List<NewKart>>(filename.NewKart_LoadFile) ?? new List<NewKart>();
-            return newkart.Any(k => k.KartID == Kart);
+            // 2. 限时车辆（存在 NewItem.json，itemCatId=3 且带期限）
+            if (File.Exists(filename.NewItem_LoadFile))
+            {
+                var newitem = LoadNewItem(filename);
+                if (newitem.Any(i => i.itemCatId == 3 && i.itemId == Kart)) return true;
+            }
+            return false;
         }
 
         /**
