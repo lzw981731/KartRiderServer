@@ -75,32 +75,61 @@ namespace RiderData
         {
             ushort sn = 1;
             int range = 100;//分批次数
-            if (items.TryGetValue(3, out Dictionary<ushort, string> resultDict))
+            // 购买模式：车辆列表改为"已购"（NewKart.json 永久车 + NewItem.json 限时车 itemCatId=3），
+            // 包结构保持 PrRequestKartInfoPacket 不变，客户端不崩，且不再显示未拥有车辆。
+            string Nickname = Parent.Client.Nickname;
+            if (!FileName.FileNames.ContainsKey(Nickname))
             {
-                List<ushort> kart = new List<ushort>(resultDict.Keys);
-                int times = kart.Count / range + (kart.Count % range > 0 ? 1 : 0);
-                for (int i = 0; i < times; i++)
+                FileName.Load(Nickname);
+            }
+            var filename = FileName.FileNames[Nickname];
+            var ownedKartIds = new List<ushort>();
+            var ownedKartSNs = new Dictionary<ushort, ushort>();
+            if (File.Exists(filename.NewKart_LoadFile))
+            {
+                var newkart = JsonHelper.DeserializeNoBom<List<NewKart>>(filename.NewKart_LoadFile) ?? new List<NewKart>();
+                foreach (var k in newkart)
                 {
-                    var tempList = kart.GetRange(i * range, (i + 1) * range > kart.Count ? (kart.Count - i * range) : range);
-                    int Count = tempList.Count;
-                    using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
+                    ownedKartIds.Add(k.KartID);
+                    ownedKartSNs[k.KartID] = k.KartSN;
+                }
+            }
+            if (File.Exists(filename.NewItem_LoadFile))
+            {
+                var newitem = Stock.LoadNewItem(filename);
+                foreach (var item in newitem)
+                {
+                    if (item.itemCatId == 3 && !ownedKartIds.Contains(item.itemId))
                     {
-                        outPacket.WriteByte(1);
-                        outPacket.WriteInt(Count);
-                        foreach (var Kart in tempList)
-                        {
-                            outPacket.WriteShort(3);
-                            outPacket.WriteUShort(Kart);
-                            outPacket.WriteUShort(sn);
-                            outPacket.WriteUShort(1);//数量
-                            outPacket.WriteShort(0);
-                            outPacket.WriteShort(-1);
-                            outPacket.WriteShort(0);
-                            outPacket.WriteShort(0);
-                            outPacket.WriteShort(0);
-                        }
-                        Parent.Client.Send(outPacket);
+                        ownedKartIds.Add(item.itemId);
+                        ownedKartSNs[item.itemId] = item.itemSn;
                     }
+                }
+            }
+            List<ushort> kart = ownedKartIds;
+            int times = kart.Count / range + (kart.Count % range > 0 ? 1 : 0);
+            if (times == 0) times = 1; // 空车库也发一个空包，避免客户端等待车辆列表超时
+            for (int i = 0; i < times; i++)
+            {
+                var tempList = kart.GetRange(i * range, (i + 1) * range > kart.Count ? (kart.Count - i * range) : range);
+                int Count = tempList.Count;
+                using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
+                {
+                    outPacket.WriteByte(1);
+                    outPacket.WriteInt(Count);
+                    foreach (var Kart in tempList)
+                    {
+                        outPacket.WriteShort(3);
+                        outPacket.WriteUShort(Kart);
+                        outPacket.WriteUShort(ownedKartSNs.TryGetValue(Kart, out var ksn) ? ksn : sn);
+                        outPacket.WriteUShort(1);//数量
+                        outPacket.WriteShort(0);
+                        outPacket.WriteShort(-1);
+                        outPacket.WriteShort(0);
+                        outPacket.WriteShort(0);
+                        outPacket.WriteShort(0);
+                    }
+                    Parent.Client.Send(outPacket);
                 }
             }
         }
