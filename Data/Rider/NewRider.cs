@@ -23,9 +23,6 @@ namespace RiderData
             KartExcData.Parts_ExcData(Parent, Nickname);
             KartExcData.Level12_ExcData(Parent, Nickname);
             KartExcData.Parts12_ExcData(Parent, Nickname);
-            // 购买模式：仅停用 NewKart1（全量车辆下发，导致"我的物品"显示所有车辆）。
-            // 其余函数（道具/零件/调校等）是客户端物品界面初始化必需的固定数据，
-            // 全部停用会导致客户端闪退，故恢复。
             NewRider.XUniquePartsData(Parent, Nickname);
             NewRider.XLegendPartsData(Parent, Nickname);
             NewRider.XRarePartsData(Parent, Nickname);
