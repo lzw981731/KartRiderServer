@@ -159,6 +159,12 @@ namespace KartRider
                 return;
             }
 
+            // ---- 生成必备的 Profile 配置文件 ----
+            // 原版 Launcher 在 Load_Data() 中自动生成，服务器若不生成会导致
+            // GrSessionDataPacket(开赛数据)读取 SpecialKartConfig.json 时抛异常，
+            // 客户端表现为点开始游戏后卡死。
+            EnsureProfileFiles();
+
             // ---- 启动服务器 ----
             Console.WriteLine("正在启动服务器...");
             try
@@ -285,6 +291,37 @@ namespace KartRider
             {
                 Console.WriteLine($"[FATAL] 赛道数据加载异常: {ex}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 生成服务器运行必需的 Profile 配置文件。
+        /// 缺失 SpecialKartConfig.json 会导致 GrSessionDataPacket(开赛数据)抛异常，
+        /// 客户端表现为点开始游戏后卡死无响应。
+        /// </summary>
+        private static void EnsureProfileFiles()
+        {
+            try
+            {
+                SpecialKartConfig.SaveConfigToFile(FileName.SpecialKartConfig);
+                Console.WriteLine($"[配置] SpecialKartConfig.json 已就绪");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[配置] 生成 SpecialKartConfig.json 失败: {ex.Message}");
+            }
+
+            try
+            {
+                if (!File.Exists(FileName.ModelMax_LoadFile))
+                {
+                    File.WriteAllText(FileName.ModelMax_LoadFile, ModelMax.XmlContent);
+                    Console.WriteLine($"[配置] ModelMax.xml 已创建");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[配置] 生成 ModelMax.xml 失败: {ex.Message}");
             }
         }
     }
