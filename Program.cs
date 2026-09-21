@@ -161,25 +161,6 @@ namespace KartRider
                 return;
             }
 
-            // ---- 诊断：输出 items 表结构（类别号→条目数），并定位宠物/飞宠/角色的类别 ----
-            try
-            {
-                Console.WriteLine($"[DIAG] items 表共 {NewRider.items.Count} 个类别:");
-                foreach (var kv in NewRider.items.OrderBy(x => x.Key))
-                {
-                    Console.WriteLine($"[DIAG]   itemCatId={kv.Key,-4} 条目={kv.Value.Count,-5} (范围 {kv.Value.Keys.Min()}-{kv.Value.Keys.Max()})");
-                }
-                foreach (ushort probe in new ushort[] { 135, 30008, 362, 501, 1522, 1426 })
-                {
-                    var hit = NewRider.items.FirstOrDefault(kv => kv.Value.ContainsKey(probe));
-                    Console.WriteLine($"[DIAG]   ID {probe} -> itemCatId={hit.Key} ({(hit.Value == null ? "不存在" : hit.Value[probe])})");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[DIAG] 输出 items 结构失败: {ex.Message}");
-            }
-
             // ---- 生成必备的 Profile 配置文件 ----
             // 原版 Launcher 在 Load_Data() 中自动生成，服务器若不生成会导致
             // GrSessionDataPacket(开赛数据)读取 SpecialKartConfig.json 时抛异常，

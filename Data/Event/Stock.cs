@@ -257,6 +257,28 @@ namespace KartRider
         }
 
         /**
+         * 判断玩家是否拥有指定角色（购买模式校验用，itemCatId=1）
+         * 角色买卖与其他道具不同：未购买的试穿角色不予保存，但保留玩家当前角色不变。
+         * @param Nickname 昵称
+         * @param CharacterId 角色ID
+         */
+        public static bool OwnsCharacter(string Nickname, ushort CharacterId)
+        {
+            if (CharacterId == 0) return true; // 0=未选角色，允许
+            if (!FileName.FileNames.ContainsKey(Nickname))
+            {
+                FileName.Load(Nickname);
+            }
+            var filename = FileName.FileNames[Nickname];
+            if (!File.Exists(filename.NewItem_LoadFile))
+            {
+                return false;
+            }
+            var newitem = LoadNewItem(filename);
+            return newitem.Any(i => i.itemCatId == 1 && i.itemId == CharacterId);
+        }
+
+        /**
          * 添加道具到 NewItem.json（添加前会先清除已到期的道具）
          * @param Nickname 昵称
          * @param Item 道具数据

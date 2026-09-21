@@ -279,8 +279,17 @@ namespace KartRider
                     else if (hash == Adler32Helper.GenerateAdler32_ASCII("LoRqSetRiderItemOnPacket", 0))
                     {
                         var riderItemConfig = ProfileService.GetProfileConfig(this.Parent.Client.Nickname);
-                        riderItemConfig.RiderItem.Set_Character = iPacket.ReadUShort();
+                        ushort reqCharacter = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Paint = iPacket.ReadUShort();
+                        // 购买模式校验：未拥有的角色不保存（保留当前角色不变）
+                        if (!Stock.OwnsCharacter(this.Parent.Client.Nickname, reqCharacter))
+                        {
+                            Console.WriteLine($"[购买校验] {this.Parent.Client.Nickname} 未拥有角色 {reqCharacter}，已保留原角色 {riderItemConfig.RiderItem.Set_Character}");
+                        }
+                        else
+                        {
+                            riderItemConfig.RiderItem.Set_Character = reqCharacter;
+                        }
                         ushort reqKart = iPacket.ReadUShort();
                         // 购买模式校验：玩家选择的车辆必须已购买，否则回退为0（客户端默认车）
                         if (!Stock.OwnsKart(this.Parent.Client.Nickname, reqKart))
