@@ -325,36 +325,37 @@ namespace KartRider
                         riderItemConfig.RiderItem.Set_KartBoosterEffect12 = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Unknown5 = iPacket.ReadUShort();
                         // 购买模式校验：装扮道具位（非0）必须已购买，未拥有回退为0
-                        void ValidateOwned(ref ushort itemId, string slotName)
+                        ushort ValidateOwned(ushort itemId, string slotName)
                         {
                             if (itemId != 0 && !Stock.OwnsItem(this.Parent.Client.Nickname, itemId))
                             {
                                 Console.WriteLine($"[购买校验] {this.Parent.Client.Nickname} 未拥有道具 {slotName}={itemId}，已回退");
-                                itemId = 0;
+                                return 0;
                             }
+                            return itemId;
                         }
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Plate, "Plate");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Goggle, "Goggle");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Balloon, "Balloon");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_HeadBand, "HeadBand");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_HeadPhone, "HeadPhone");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_HandGearL, "HandGearL");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Uniform, "Uniform");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Decal, "Decal");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Pet, "Pet");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_FlyingPet, "FlyingPet");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Aura, "Aura");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_SkidMark, "SkidMark");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_SpecialKit, "SpecialKit");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_RidColor, "RidColor");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_BonusCard, "BonusCard");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_BossModeCard, "BossModeCard");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant1, "KartPlant1");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant2, "KartPlant2");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant3, "KartPlant3");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant4, "KartPlant4");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_FishingPole, "FishingPole");
-                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Tachometer, "Tachometer");
+                        riderItemConfig.RiderItem.Set_Plate = ValidateOwned(riderItemConfig.RiderItem.Set_Plate, "Plate");
+                        riderItemConfig.RiderItem.Set_Goggle = ValidateOwned(riderItemConfig.RiderItem.Set_Goggle, "Goggle");
+                        riderItemConfig.RiderItem.Set_Balloon = ValidateOwned(riderItemConfig.RiderItem.Set_Balloon, "Balloon");
+                        riderItemConfig.RiderItem.Set_HeadBand = ValidateOwned(riderItemConfig.RiderItem.Set_HeadBand, "HeadBand");
+                        riderItemConfig.RiderItem.Set_HeadPhone = ValidateOwned(riderItemConfig.RiderItem.Set_HeadPhone, "HeadPhone");
+                        riderItemConfig.RiderItem.Set_HandGearL = ValidateOwned(riderItemConfig.RiderItem.Set_HandGearL, "HandGearL");
+                        riderItemConfig.RiderItem.Set_Uniform = ValidateOwned(riderItemConfig.RiderItem.Set_Uniform, "Uniform");
+                        riderItemConfig.RiderItem.Set_Decal = ValidateOwned(riderItemConfig.RiderItem.Set_Decal, "Decal");
+                        riderItemConfig.RiderItem.Set_Pet = ValidateOwned(riderItemConfig.RiderItem.Set_Pet, "Pet");
+                        riderItemConfig.RiderItem.Set_FlyingPet = ValidateOwned(riderItemConfig.RiderItem.Set_FlyingPet, "FlyingPet");
+                        riderItemConfig.RiderItem.Set_Aura = ValidateOwned(riderItemConfig.RiderItem.Set_Aura, "Aura");
+                        riderItemConfig.RiderItem.Set_SkidMark = ValidateOwned(riderItemConfig.RiderItem.Set_SkidMark, "SkidMark");
+                        riderItemConfig.RiderItem.Set_SpecialKit = ValidateOwned(riderItemConfig.RiderItem.Set_SpecialKit, "SpecialKit");
+                        riderItemConfig.RiderItem.Set_RidColor = ValidateOwned(riderItemConfig.RiderItem.Set_RidColor, "RidColor");
+                        riderItemConfig.RiderItem.Set_BonusCard = ValidateOwned(riderItemConfig.RiderItem.Set_BonusCard, "BonusCard");
+                        riderItemConfig.RiderItem.Set_BossModeCard = ValidateOwned(riderItemConfig.RiderItem.Set_BossModeCard, "BossModeCard");
+                        riderItemConfig.RiderItem.Set_KartPlant1 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant1, "KartPlant1");
+                        riderItemConfig.RiderItem.Set_KartPlant2 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant2, "KartPlant2");
+                        riderItemConfig.RiderItem.Set_KartPlant3 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant3, "KartPlant3");
+                        riderItemConfig.RiderItem.Set_KartPlant4 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant4, "KartPlant4");
+                        riderItemConfig.RiderItem.Set_FishingPole = ValidateOwned(riderItemConfig.RiderItem.Set_FishingPole, "FishingPole");
+                        riderItemConfig.RiderItem.Set_Tachometer = ValidateOwned(riderItemConfig.RiderItem.Set_Tachometer, "Tachometer");
                         ProfileService.Save(this.Parent.Client.Nickname, riderItemConfig);
                         int roomId = RoomManager.TryGetRoomId(this.Parent.Client.Nickname);
                         if (roomId != -1)
