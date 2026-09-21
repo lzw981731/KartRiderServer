@@ -117,7 +117,7 @@ namespace KartLibrary.File
                             else
                                 currectProcObj.Parent.Folders.Add(NewFolder);
                         }
-                        Rho rhoFile = new Rho($"{fileInfo.DirectoryName}\\{fileName}", rhoFileKey);
+                        Rho rhoFile = new Rho(Path.Combine(fileInfo.DirectoryName, fileName), rhoFileKey);
                         Queue<(PackFolderInfo, RhoDirectory)> dirQue = new Queue<(PackFolderInfo, RhoDirectory)>();
                         RhoDirectory rootDir = rhoFile.RootDirectory;
                         dirQue.Enqueue((NewFolder, rootDir));
