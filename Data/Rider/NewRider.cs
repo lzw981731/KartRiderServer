@@ -39,7 +39,7 @@ namespace RiderData
             NewRider.partsWheel12(Parent, Nickname);
             NewRider.partsBooster12(Parent, Nickname);
             NewRider.Items(Parent, Nickname);
-            //NewRider.NewKart1(Parent);
+            NewRider.NewKart1(Parent);
             NewRider.NewKart2(Parent);
             NewRider.NewItem(Parent);
             NewRider.NewRiderData(Parent);//라이더 인식
@@ -124,7 +124,6 @@ namespace RiderData
 
             int range = 100;//分批次数
             int times = newkart.Count / range + (newkart.Count % range > 0 ? 1 : 0);
-            if (times == 0) times = 1; // 空车库时也发一个空包，避免客户端"我的物品"等待车辆列表超时闪退
             for (int i = 0; i < times; i++)
             {
                 var tempList = newkart.GetRange(i * range, (i + 1) * range > newkart.Count ? (newkart.Count - i * range) : range);
