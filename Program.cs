@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using KartRider;
 using KartRider.Common.Data;
 using Profile;
+using RiderData;
 
 namespace KartRider
 {
