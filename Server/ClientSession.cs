@@ -281,7 +281,14 @@ namespace KartRider
                         var riderItemConfig = ProfileService.GetProfileConfig(this.Parent.Client.Nickname);
                         riderItemConfig.RiderItem.Set_Character = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Paint = iPacket.ReadUShort();
-                        riderItemConfig.RiderItem.Set_Kart = iPacket.ReadUShort();
+                        ushort reqKart = iPacket.ReadUShort();
+                        // 购买模式校验：玩家选择的车辆必须已购买，否则回退为0（客户端默认车）
+                        if (!Stock.OwnsKart(this.Parent.Client.Nickname, reqKart))
+                        {
+                            Console.WriteLine($"[购买校验] {this.Parent.Client.Nickname} 未拥有车辆 {reqKart}，已回退默认");
+                            reqKart = 0;
+                        }
+                        riderItemConfig.RiderItem.Set_Kart = reqKart;
                         riderItemConfig.RiderItem.Set_Plate = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Goggle = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Balloon = iPacket.ReadUShort();
@@ -317,6 +324,37 @@ namespace KartRider
                         riderItemConfig.RiderItem.Set_KartTailLamp12 = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_KartBoosterEffect12 = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Unknown5 = iPacket.ReadUShort();
+                        // 购买模式校验：装扮道具位（非0）必须已购买，未拥有回退为0
+                        void ValidateOwned(ref ushort itemId, string slotName)
+                        {
+                            if (itemId != 0 && !Stock.OwnsItem(this.Parent.Client.Nickname, itemId))
+                            {
+                                Console.WriteLine($"[购买校验] {this.Parent.Client.Nickname} 未拥有道具 {slotName}={itemId}，已回退");
+                                itemId = 0;
+                            }
+                        }
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Plate, "Plate");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Goggle, "Goggle");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Balloon, "Balloon");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_HeadBand, "HeadBand");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_HeadPhone, "HeadPhone");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_HandGearL, "HandGearL");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Uniform, "Uniform");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Decal, "Decal");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Pet, "Pet");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_FlyingPet, "FlyingPet");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Aura, "Aura");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_SkidMark, "SkidMark");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_SpecialKit, "SpecialKit");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_RidColor, "RidColor");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_BonusCard, "BonusCard");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_BossModeCard, "BossModeCard");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant1, "KartPlant1");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant2, "KartPlant2");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant3, "KartPlant3");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_KartPlant4, "KartPlant4");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_FishingPole, "FishingPole");
+                        ValidateOwned(ref riderItemConfig.RiderItem.Set_Tachometer, "Tachometer");
                         ProfileService.Save(this.Parent.Client.Nickname, riderItemConfig);
                         int roomId = RoomManager.TryGetRoomId(this.Parent.Client.Nickname);
                         if (roomId != -1)

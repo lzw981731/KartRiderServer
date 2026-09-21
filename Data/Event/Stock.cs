@@ -208,6 +208,48 @@ namespace KartRider
         }
 
         /**
+         * 判断玩家是否拥有指定车辆（购买模式校验用）
+         * @param Nickname 昵称
+         * @param Kart 车辆ID
+         */
+        public static bool OwnsKart(string Nickname, ushort Kart)
+        {
+            if (Kart == 0) return true; // 0=未选择，视为允许（客户端默认车）
+            if (!FileName.FileNames.ContainsKey(Nickname))
+            {
+                FileName.Load(Nickname);
+            }
+            var filename = FileName.FileNames[Nickname];
+            if (!File.Exists(filename.NewKart_LoadFile))
+            {
+                return false;
+            }
+            var newkart = JsonHelper.DeserializeNoBom<List<NewKart>>(filename.NewKart_LoadFile) ?? new List<NewKart>();
+            return newkart.Any(k => k.KartID == Kart);
+        }
+
+        /**
+         * 判断玩家是否拥有指定道具（购买模式校验用）
+         * @param Nickname 昵称
+         * @param ItemId 道具ID
+         */
+        public static bool OwnsItem(string Nickname, ushort ItemId)
+        {
+            if (ItemId == 0) return true; // 0=未装备，允许
+            if (!FileName.FileNames.ContainsKey(Nickname))
+            {
+                FileName.Load(Nickname);
+            }
+            var filename = FileName.FileNames[Nickname];
+            if (!File.Exists(filename.NewItem_LoadFile))
+            {
+                return false;
+            }
+            var newitem = LoadNewItem(filename);
+            return newitem.Any(i => i.itemId == ItemId);
+        }
+
+        /**
          * 添加道具到 NewItem.json（添加前会先清除已到期的道具）
          * @param Nickname 昵称
          * @param Item 道具数据
