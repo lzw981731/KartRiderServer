@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -98,6 +99,34 @@ namespace KartRider
                     this.Parent.Client.Nickname = packet.Nickname;
                     FileName.Load(packet.Nickname);
                     Bingo.LoadProgress(packet.Nickname);
+
+                    // ---- 服务器配置覆盖俱乐部信息 ----
+                    var conf = ServerConf.Current;
+                    if (!string.IsNullOrEmpty(conf.ClubIntro) || !string.IsNullOrEmpty(conf.ClubName))
+                    {
+                        var clubConfig = ProfileService.GetProfileConfig(packet.Nickname);
+                        if (!string.IsNullOrEmpty(conf.ClubIntro))
+                            clubConfig.Rider.ClubIntro = conf.ClubIntro;
+                        if (!string.IsNullOrEmpty(conf.ClubName))
+                            clubConfig.Rider.ClubName = conf.ClubName;
+                        if (conf.ClubMarkLogo != 0)
+                            clubConfig.Rider.ClubMark_LOGO = conf.ClubMarkLogo;
+                        if (conf.ClubMarkLine != 0)
+                            clubConfig.Rider.ClubMark_LINE = conf.ClubMarkLine;
+                        ProfileService.Save(packet.Nickname, clubConfig);
+                    }
+
+                    // ---- 登录赠送（新玩家 Profile 目录不存在时）----
+                    if (conf.HasLoginGifts())
+                    {
+                        var filename = FileName.FileNames[packet.Nickname];
+                        bool isNewPlayer = !File.Exists(filename.NewKart_LoadFile) && !File.Exists(filename.Launcher_LoadFile);
+                        if (isNewPlayer)
+                        {
+                            GrantLoginGifts(packet.Nickname, conf);
+                        }
+                    }
+
                     uint UserNO = ClientManager.GetUserNO(packet.Nickname);
                     var loginConfig = ProfileService.GetProfileConfig(packet.Nickname);
                     loginConfig.Rider.ClientId = clientId;
@@ -4030,6 +4059,80 @@ namespace KartRider
                         return;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// 登录赠送：给新玩家添加车辆、角色、货币
+        /// </summary>
+        private void GrantLoginGifts(string nickname, ServerConf conf)
+        {
+            try
+            {
+                var filename = FileName.FileNames[nickname];
+                bool gifted = false;
+
+                // 赠送车辆（添加到 NewKart.json）
+                if (conf.LoginGiftKarts != null && conf.LoginGiftKarts.Count > 0)
+                {
+                    var newKartList = new List<NewKart>();
+                    foreach (ushort kartId in conf.LoginGiftKarts)
+                    {
+                        newKartList.Add(new NewKart { KartID = kartId, KartSN = 0 });
+                    }
+                    string json = JsonSerializer.Serialize(newKartList);
+                    File.WriteAllText(filename.NewKart_LoadFile, json, Encoding.UTF8);
+                    Console.WriteLine($"[登录赠送] {nickname} 获得车辆: [{string.Join(", ", conf.LoginGiftKarts)}]");
+                    gifted = true;
+                }
+
+                // 赠送角色（添加到 NewItem.json，itemCatId=1 表示角色）
+                if (conf.LoginGiftCharacters != null && conf.LoginGiftCharacters.Count > 0)
+                {
+                    var newItemList = new List<NewItem>();
+                    foreach (ushort charId in conf.LoginGiftCharacters)
+                    {
+                        newItemList.Add(new NewItem
+                        {
+                            itemCatId = 1,
+                            itemId = charId,
+                            itemSn = 0,
+                            itemCount = 1,
+                            endTime = DateTime.MaxValue
+                        });
+                    }
+                    string json = JsonSerializer.Serialize(newItemList);
+                    File.WriteAllText(filename.NewItem_LoadFile, json, Encoding.UTF8);
+                    Console.WriteLine($"[登录赠送] {nickname} 获得角色: [{string.Join(", ", conf.LoginGiftCharacters)}]");
+                    gifted = true;
+                }
+
+                // 赠送货币
+                if (conf.LoginGiftLucci > 0 || conf.LoginGiftKoin > 0)
+                {
+                    var profileConfig = ProfileService.GetProfileConfig(nickname);
+                    if (conf.LoginGiftLucci > 0)
+                    {
+                        profileConfig.Rider.Lucci += conf.LoginGiftLucci;
+                        Console.WriteLine($"[登录赠送] {nickname} 获得 Lucci: +{conf.LoginGiftLucci}");
+                    }
+                    if (conf.LoginGiftKoin > 0)
+                    {
+                        profileConfig.Rider.Koin += conf.LoginGiftKoin;
+                        Console.WriteLine($"[登录赠送] {nickname} 获得 Koin: +{conf.LoginGiftKoin}");
+                    }
+                    ProfileService.Save(nickname, profileConfig);
+                    gifted = true;
+                }
+
+                if (gifted)
+                {
+                    Console.WriteLine($"[登录赠送] {nickname} 新玩家登录赠送完成");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[登录赠送] {nickname} 赠送失败: {ex.Message}");
             }
         }
     }

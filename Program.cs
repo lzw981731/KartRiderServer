@@ -158,6 +158,9 @@ namespace KartRider
             Console.WriteLine($"Profile 目录: {profileDir}");
             Console.WriteLine($"游戏根目录: {GameRoot}");
 
+            // ---- 加载服务器配置（server.conf）----
+            ServerConf.Load(GameRoot);
+
             // ---- 加载赛道数据（RhoDump：读取 Data/aaa.pk 填充 RandomTrack.TrackList）----
             if (!LoadTrackData(GameRoot))
             {
