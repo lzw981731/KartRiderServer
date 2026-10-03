@@ -34,12 +34,63 @@ namespace KartRider
                 if (Item.itemCatId == 3 && Item.expireDay == 0)
                 {
                     AddNewKart(Parent, Item.itemId);
+                    NotifyKartObtained(Parent, Item.itemId);
                 }
                 else
                 {
                     AddNewItem(Parent.Client.Nickname, Item);
+                    NotifyItemObtained(Parent, Item);
                 }
             }
+        }
+
+        /**
+         * 购买/获得道具后通知客户端（否则客户端仍是登录时加载的旧列表，看不到新道具）
+         * 复用 LoRpGetRiderItemPacket 单条下发，与 NewItem() 格式一致
+         */
+        public static void NotifyItemObtained(SessionGroup Parent, item Item)
+        {
+            using (OutPacket oPacket = new OutPacket("LoRpGetRiderItemPacket"))
+            {
+                oPacket.WriteInt(1);
+                oPacket.WriteInt(1);
+                oPacket.WriteInt(1);
+                oPacket.WriteUShort(Item.itemCatId);
+                oPacket.WriteUShort(Item.itemId);
+                oPacket.WriteUShort(0); // itemSn
+                oPacket.WriteUShort(Item.itemCount == 0 ? (ushort)1 : Item.itemCount); // 数量至少为1，0会被客户端视为未拥有
+                oPacket.WriteByte(0);   // PreventItem=0 可用
+                oPacket.WriteByte(0);
+                oPacket.WriteTime(Item.expireDay == 0 ? DateTime.MinValue : DateTime.Now.AddDays(Item.expireDay));
+                oPacket.WriteByte(0);
+                oPacket.WriteByte(0);
+                oPacket.WriteShort(0);
+                Parent.Client.Send(oPacket);
+            }
+            Console.WriteLine($"[购买通知] {Parent.Client.Nickname} 获得道具 catId={Item.itemCatId} itemId={Item.itemId}");
+        }
+
+        /**
+         * 购买/获得车辆后通知客户端（PrRequestKartInfoPacket 单条下发，与 NewKart1() 格式一致）
+         */
+        public static void NotifyKartObtained(SessionGroup Parent, ushort Kart)
+        {
+            using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
+            {
+                outPacket.WriteByte(1);
+                outPacket.WriteInt(1);
+                outPacket.WriteShort(3);
+                outPacket.WriteUShort(Kart);
+                outPacket.WriteUShort(1); // KartSN
+                outPacket.WriteUShort(1); // 数量
+                outPacket.WriteShort(0);
+                outPacket.WriteShort(-1);
+                outPacket.WriteShort(0);
+                outPacket.WriteShort(0);
+                outPacket.WriteShort(0);
+                Parent.Client.Send(outPacket);
+            }
+            Console.WriteLine($"[购买通知] {Parent.Client.Nickname} 获得车辆 KartID={Kart}");
         }
 
         public static void ShopBuy(SessionGroup Parent, uint stockId, byte priceType)
