@@ -99,7 +99,7 @@ namespace KartRider
             {
                 _confPath = Path.GetFullPath(Path.Combine(rootDir, "server.conf"));
 
-                // 配置文件不存在时，创建默认配置
+                // 配置文件不存在时，创建带中文注释的默认配置
                 if (!File.Exists(_confPath))
                 {
                     SaveDefault();
@@ -107,10 +107,12 @@ namespace KartRider
                     return;
                 }
 
-                // 读取并反序列化配置文件
+                // 读取配置文件（允许包含 // 注释行，读取时自动跳过）
                 try
                 {
                     string json = File.ReadAllText(_confPath, Encoding.UTF8);
+                    // 去除 // 单行注释（不影响字符串内的 //）
+                    json = RemoveComments(json);
                     _instance = JsonSerializer.Deserialize<ServerConf>(json) ?? new ServerConf();
 
                     // 打印加载信息
@@ -135,15 +137,66 @@ namespace KartRider
         }
 
         /// <summary>
-        /// 保存默认配置文件（首次启动时自动创建）
+        /// 去除 JSON 中的 // 单行注释
+        /// </summary>
+        private static string RemoveComments(string json)
+        {
+            var sb = new StringBuilder();
+            bool inString = false;
+            for (int i = 0; i < json.Length; i++)
+            {
+                char c = json[i];
+                if (c == '"' && (i == 0 || json[i - 1] != '\\'))
+                {
+                    inString = !inString;
+                    sb.Append(c);
+                }
+                else if (!inString && c == '/' && i + 1 < json.Length && json[i + 1] == '/')
+                {
+                    // 跳过注释直到行尾
+                    while (i < json.Length && json[i] != '\n') i++;
+                    // 保留换行符
+                    if (i < json.Length) sb.Append('\n');
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// 保存默认配置文件（带中文注释，方便手动编辑）
         /// </summary>
         private static void SaveDefault()
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };  // 缩进格式，方便手动编辑
-                string json = JsonSerializer.Serialize(new ServerConf(), options);
-                File.WriteAllText(_confPath, json, Encoding.UTF8);
+                string content = @"{
+  // ==== 俱乐部信息（覆盖玩家档案中的俱乐部数据）====
+  ""ClubIntro"": ""跑跑卡丁车交流群：84338611\n单机启动器下载地址：https://yanygm.github.io/Launcher_V2/"",  // 俱乐部公告（支持\n换行）
+  ""ClubName"": ""TCCstar"",       // 俱乐部名称
+  ""ClubMarkLogo"": 0,             // 俱乐部标志 LOGO（0=无标志）
+  ""ClubMarkLine"": 0,             // 俱乐部标志 LINE（0=无标志）
+
+  // ==== 登录赠送（仅新玩家首次登录生效，在初始值基础上累加）====
+  ""LoginGiftKarts"": [],           // 登录赠送车辆ID列表，如 [167, 168]（空=不赠送）
+  ""LoginGiftCharacters"": [],      // 登录赠送角色ID列表（空=不赠送）
+  ""LoginGiftLucci"": 0,            // 登录赠送 Lucci（游戏金币），0=不赠送
+  ""LoginGiftKoin"": 0,             // 登录赠送 Koin，0=不赠送
+
+  // ==== 新玩家初始值（首次登录时覆盖硬编码默认值）====
+  ""InitialLucci"": 1000000,        // 新玩家初始 Lucci（游戏金币）
+  ""InitialRP"": 2000000000,        // 新玩家初始 RP（排位积分=角色等级，0=1级新手，20亿=满级）
+  ""InitialKoin"": 1000000,         // 新玩家初始 Koin
+  ""InitialCash"": 1000000,         // 新玩家初始 Cash（点券）
+  ""InitialTcCash"": 1000000,       // 新玩家初始 TcCash（限时点券）
+  ""InitialPremium"": 5,            // 新玩家初始 VIP 等级（0=无，5=满级）
+  ""InitialSlotChanger"": 32767     // 新玩家初始卡槽切换器（0=无，32767=满）
+}
+";
+                File.WriteAllText(_confPath, content, Encoding.UTF8);
             }
             catch (Exception ex)
             {
