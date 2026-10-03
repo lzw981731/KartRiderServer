@@ -233,6 +233,8 @@ namespace RiderData
                         ownedItems[item.itemCatId] = new HashSet<ushort>();
                     ownedItems[item.itemCatId].Add(item.itemId);
                 }
+                int totalOwned = ownedItems.Values.Sum(v => v.Count);
+                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {totalOwned} 件, 覆盖 {ownedItems.Count} 个类别");
             }
             foreach (var category in items)
             {
@@ -1063,6 +1065,11 @@ namespace RiderData
                         else
                         {
                             preventItem = (byte)(Program.PreventItem ? 1 : 0);
+                        }
+                        // 调试：每个类别只打印第一个道具的 PreventItem 值
+                        if (f == 0)
+                        {
+                            Console.WriteLine($"[PurchaseOnlyMode] 类别{itemCat} 首个道具id={tempList[f][0]} PreventItem={preventItem} (模式={ServerConf.Current.PurchaseOnlyMode})");
                         }
                         oPacket.WriteByte(preventItem);
                         oPacket.WriteByte(0);
