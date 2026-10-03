@@ -288,14 +288,14 @@ namespace KartRider
 
         /**
          * 判断玩家是否拥有指定道具（购买模式校验用）
+         * 按 (itemCatId, itemId) 精确匹配，避免跨类别 itemId 相同导致误判
          * @param Nickname 昵称
+         * @param ItemCatId 道具类别ID
          * @param ItemId 道具ID
          */
-        public static bool OwnsItem(string Nickname, ushort ItemId)
+        public static bool OwnsItem(string Nickname, ushort ItemCatId, ushort ItemId)
         {
             if (ItemId == 0) return true; // 0=未装备，允许
-            // 默认道具白名单：黑妞(3)、皮蛋(4)、默认涂装/染色(1)
-            if (ItemId == 1 || ItemId == 3 || ItemId == 4) return true;
             if (!FileName.FileNames.ContainsKey(Nickname))
             {
                 FileName.Load(Nickname);
@@ -306,19 +306,19 @@ namespace KartRider
                 return false;
             }
             var newitem = LoadNewItem(filename);
-            return newitem.Any(i => i.itemId == ItemId);
+            return newitem.Any(i => i.itemCatId == ItemCatId && i.itemId == ItemId);
         }
 
         /**
-         * 判断玩家是否拥有指定角色（购买模式校验用）
-         * 黑妞(3)和皮蛋(4)是默认角色，始终视为已拥有。
+         * 判断玩家是否拥有指定角色（购买模式校验用，角色类别 itemCatId=1）
+         * 默认角色始终视为已拥有：皮蛋(2)、黑妞(3)、葱头(4)
          * @param Nickname 昵称
          * @param CharacterId 角色ID
          */
         public static bool OwnsCharacter(string Nickname, ushort CharacterId)
         {
             if (CharacterId == 0) return true; // 0=未选角色，允许
-            if (CharacterId == 3 || CharacterId == 4) return true; // 黑妞、皮蛋是默认角色
+            if (CharacterId == 2 || CharacterId == 3 || CharacterId == 4) return true; // 皮蛋、黑妞、葱头是默认角色
             if (!FileName.FileNames.ContainsKey(Nickname))
             {
                 FileName.Load(Nickname);
@@ -329,7 +329,7 @@ namespace KartRider
                 return false;
             }
             var newitem = LoadNewItem(filename);
-            return newitem.Any(i => i.itemId == CharacterId);
+            return newitem.Any(i => i.itemCatId == 1 && i.itemId == CharacterId);
         }
 
         /**

@@ -425,38 +425,29 @@ namespace KartRider
                         riderItemConfig.RiderItem.Set_KartTailLamp12 = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_KartBoosterEffect12 = iPacket.ReadUShort();
                         riderItemConfig.RiderItem.Set_Unknown5 = iPacket.ReadUShort();
-                        // 购买模式校验：装扮道具位（非0）必须已购买，未拥有回退为0
-                        ushort ValidateOwned(ushort itemId, string slotName)
+                        // 购买模式校验：装扮道具位（非0）必须已购买，未拥有回退为0。
+                        // 各槽位对应道具类别(itemCatId)：角色=1 喷漆=2 车辆=3 车牌=4 眼镜=8 气球=9
+                        // 头饰=11 手杖=16 制服=18 贴花=20 宠物=21 炫光=26 印迹=27 背景=28
+                        ushort ValidateOwned(ushort itemId, ushort itemCatId, string slotName)
                         {
-                            if (itemId != 0 && !Stock.OwnsItem(this.Parent.Client.Nickname, itemId))
+                            if (itemId != 0 && !Stock.OwnsItem(this.Parent.Client.Nickname, itemCatId, itemId))
                             {
-                                Console.WriteLine($"[购买校验] {this.Parent.Client.Nickname} 未拥有道具 {slotName}={itemId}，已回退");
+                                Console.WriteLine($"[购买校验] {this.Parent.Client.Nickname} 未拥有道具 {slotName}={itemId}(cat{itemCatId})，已回退");
                                 return 0;
                             }
                             return itemId;
                         }
-                        riderItemConfig.RiderItem.Set_Plate = ValidateOwned(riderItemConfig.RiderItem.Set_Plate, "Plate");
-                        riderItemConfig.RiderItem.Set_Goggle = ValidateOwned(riderItemConfig.RiderItem.Set_Goggle, "Goggle");
-                        riderItemConfig.RiderItem.Set_Balloon = ValidateOwned(riderItemConfig.RiderItem.Set_Balloon, "Balloon");
-                        riderItemConfig.RiderItem.Set_HeadBand = ValidateOwned(riderItemConfig.RiderItem.Set_HeadBand, "HeadBand");
-                        riderItemConfig.RiderItem.Set_HeadPhone = ValidateOwned(riderItemConfig.RiderItem.Set_HeadPhone, "HeadPhone");
-                        riderItemConfig.RiderItem.Set_HandGearL = ValidateOwned(riderItemConfig.RiderItem.Set_HandGearL, "HandGearL");
-                        riderItemConfig.RiderItem.Set_Uniform = ValidateOwned(riderItemConfig.RiderItem.Set_Uniform, "Uniform");
-                        riderItemConfig.RiderItem.Set_Decal = ValidateOwned(riderItemConfig.RiderItem.Set_Decal, "Decal");
-                        riderItemConfig.RiderItem.Set_Pet = ValidateOwned(riderItemConfig.RiderItem.Set_Pet, "Pet");
-                        riderItemConfig.RiderItem.Set_FlyingPet = ValidateOwned(riderItemConfig.RiderItem.Set_FlyingPet, "FlyingPet");
-                        riderItemConfig.RiderItem.Set_Aura = ValidateOwned(riderItemConfig.RiderItem.Set_Aura, "Aura");
-                        riderItemConfig.RiderItem.Set_SkidMark = ValidateOwned(riderItemConfig.RiderItem.Set_SkidMark, "SkidMark");
-                        riderItemConfig.RiderItem.Set_SpecialKit = ValidateOwned(riderItemConfig.RiderItem.Set_SpecialKit, "SpecialKit");
-                        riderItemConfig.RiderItem.Set_RidColor = ValidateOwned(riderItemConfig.RiderItem.Set_RidColor, "RidColor");
-                        riderItemConfig.RiderItem.Set_BonusCard = ValidateOwned(riderItemConfig.RiderItem.Set_BonusCard, "BonusCard");
-                        riderItemConfig.RiderItem.Set_BossModeCard = ValidateOwned(riderItemConfig.RiderItem.Set_BossModeCard, "BossModeCard");
-                        riderItemConfig.RiderItem.Set_KartPlant1 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant1, "KartPlant1");
-                        riderItemConfig.RiderItem.Set_KartPlant2 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant2, "KartPlant2");
-                        riderItemConfig.RiderItem.Set_KartPlant3 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant3, "KartPlant3");
-                        riderItemConfig.RiderItem.Set_KartPlant4 = ValidateOwned(riderItemConfig.RiderItem.Set_KartPlant4, "KartPlant4");
-                        riderItemConfig.RiderItem.Set_FishingPole = ValidateOwned(riderItemConfig.RiderItem.Set_FishingPole, "FishingPole");
-                        riderItemConfig.RiderItem.Set_Tachometer = ValidateOwned(riderItemConfig.RiderItem.Set_Tachometer, "Tachometer");
+                        riderItemConfig.RiderItem.Set_Plate = ValidateOwned(riderItemConfig.RiderItem.Set_Plate, 4, "Plate");
+                        riderItemConfig.RiderItem.Set_Goggle = ValidateOwned(riderItemConfig.RiderItem.Set_Goggle, 8, "Goggle");
+                        riderItemConfig.RiderItem.Set_Balloon = ValidateOwned(riderItemConfig.RiderItem.Set_Balloon, 9, "Balloon");
+                        riderItemConfig.RiderItem.Set_HeadBand = ValidateOwned(riderItemConfig.RiderItem.Set_HeadBand, 11, "HeadBand");
+                        riderItemConfig.RiderItem.Set_HandGearL = ValidateOwned(riderItemConfig.RiderItem.Set_HandGearL, 16, "HandGearL");
+                        riderItemConfig.RiderItem.Set_Uniform = ValidateOwned(riderItemConfig.RiderItem.Set_Uniform, 18, "Uniform");
+                        riderItemConfig.RiderItem.Set_Decal = ValidateOwned(riderItemConfig.RiderItem.Set_Decal, 20, "Decal");
+                        riderItemConfig.RiderItem.Set_Pet = ValidateOwned(riderItemConfig.RiderItem.Set_Pet, 21, "Pet");
+                        riderItemConfig.RiderItem.Set_Aura = ValidateOwned(riderItemConfig.RiderItem.Set_Aura, 26, "Aura");
+                        riderItemConfig.RiderItem.Set_SkidMark = ValidateOwned(riderItemConfig.RiderItem.Set_SkidMark, 27, "SkidMark");
+                        // HeadPhone/飞行宠/特殊道具/卡片/车辆植物/钓竿/转速表：类别未确认或属车辆零件体系，不做购买校验
                         ProfileService.Save(this.Parent.Client.Nickname, riderItemConfig);
                         int roomId = RoomManager.TryGetRoomId(this.Parent.Client.Nickname);
                         if (roomId != -1)

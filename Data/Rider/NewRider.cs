@@ -216,12 +216,19 @@ namespace RiderData
 
         public static void Items(SessionGroup Parent, string Nickname)
         {
-            // 购买模式：构建已拥有道具ID集合（仅按itemId匹配，避免目录与NewItem.json的itemCatId映射不一致）
-            // 默认道具白名单：黑妞(3)、皮蛋(4)是默认角色，涂装1/染色1是默认外观
-            HashSet<ushort> ownedItemIds = null;
+            // 购买模式：构建已拥有道具集合，按 (itemCatId, itemId) 精确匹配。
+            // 实测目录分类：catId=1角色、3车辆、9气球等；NewItem.json 与目录的 catId 语义一致，
+            // 必须按二元组匹配，否则拥有某类别itemId=N会误把另一类别itemId=N也判成已拥有（跨类别串味）。
+            // 默认道具白名单（始终视为已拥有）：角色catId=1的黑妞(3)、皮蛋(2)、葱头(4)
+            HashSet<(ushort cat, ushort id)> ownedItems = null;
             if (ServerConf.Current.PurchaseOnlyMode)
             {
-                ownedItemIds = new HashSet<ushort> { 3, 4, 1 }; // 黑妞、皮蛋、默认涂装/染色(id=1)
+                ownedItems = new HashSet<(ushort, ushort)>
+                {
+                    (1, 2), // 皮蛋
+                    (1, 3), // 黑妞
+                    (1, 4), // 葱头
+                };
                 if (!FileName.FileNames.ContainsKey(Nickname))
                 {
                     FileName.Load(Nickname);
@@ -230,9 +237,9 @@ namespace RiderData
                 var newitemList = Stock.LoadNewItem(filename);
                 foreach (var item in newitemList)
                 {
-                    ownedItemIds.Add(item.itemId);
+                    ownedItems.Add((item.itemCatId, item.itemId));
                 }
-                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {ownedItemIds.Count} 件（含默认白名单）");
+                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {ownedItems.Count} 件（含默认角色白名单）");
             }
             foreach (var category in items)
             {
@@ -251,7 +258,7 @@ namespace RiderData
                         }
                         // 购买模式：未拥有的道具数量置 0（客户端据此不显示），
                         // 注意仍然下发该条目（不跳过），否则客户端因缺失目录条目闪退
-                        bool isOwned = ownedItemIds == null || ownedItemIds.Contains(id);
+                        bool isOwned = ownedItems == null || ownedItems.Contains((itemCatId, id));
                         if (ServerConf.Current.PurchaseOnlyMode && !isOwned)
                         {
                             num = 0;
@@ -304,7 +311,7 @@ namespace RiderData
                             items.Add(add);
                         }
                     }
-                    LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItemIds);
+                    LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItems);
                 }
             }
         }
@@ -1042,7 +1049,7 @@ namespace RiderData
             }
         }
 
-        public static void LoRpGetRiderItemPacket(SessionGroup Parent, ushort itemCat, List<List<ushort>> item, HashSet<ushort> ownedItemIds = null)
+        public static void LoRpGetRiderItemPacket(SessionGroup Parent, ushort itemCat, List<List<ushort>> item, HashSet<(ushort cat, ushort id)> ownedItems = null)
         {
             int range = 100;//分批次数
             int times = item.Count / range + (item.Count % range > 0 ? 1 : 0);
@@ -1060,12 +1067,12 @@ namespace RiderData
                         oPacket.WriteUShort(tempList[f][0]);
                         oPacket.WriteUShort(tempList[f][1]);
                         oPacket.WriteUShort(tempList[f][2]);
-                        // 购买模式：按itemId匹配（忽略itemCatId，避免目录与NewItem.json的类别ID映射不一致）
+                        // 购买模式：按 (itemCatId, itemId) 二元组匹配（防止跨类别 itemId 相同导致误判）
                         byte preventItem;
-                        if (ServerConf.Current.PurchaseOnlyMode && ownedItemIds != null)
+                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
                         {
                             ushort itemId = tempList[f][0];
-                            preventItem = ownedItemIds.Contains(itemId) ? (byte)0 : (byte)1;
+                            preventItem = ownedItems.Contains((itemCat, itemId)) ? (byte)0 : (byte)1;
                         }
                         else
                         {
