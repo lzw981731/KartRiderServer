@@ -12,7 +12,9 @@ namespace KartRider
     /// </summary>
     public class ServerConf
     {
-        /// <summary>俱乐部公告（显示在游戏内俱乐部页面）</summary>
+        // ---- 俱乐部信息（覆盖玩家档案中的俱乐部数据）----
+
+        /// <summary>俱乐部公告（显示在游戏内俱乐部页面，支持\n换行）</summary>
         [JsonPropertyName("ClubIntro")]
         public string ClubIntro { get; set; } = "跑跑卡丁车交流群：84338611\n单机启动器下载地址：https://yanygm.github.io/Launcher_V2/";
 
@@ -20,63 +22,69 @@ namespace KartRider
         [JsonPropertyName("ClubName")]
         public string ClubName { get; set; } = "TCCstar";
 
-        /// <summary>俱乐部标志 LOGO</summary>
+        /// <summary>俱乐部标志 LOGO（0=无标志）</summary>
         [JsonPropertyName("ClubMarkLogo")]
         public int ClubMarkLogo { get; set; } = 0;
 
-        /// <summary>俱乐部标志 LINE</summary>
+        /// <summary>俱乐部标志 LINE（0=无标志）</summary>
         [JsonPropertyName("ClubMarkLine")]
         public int ClubMarkLine { get; set; } = 0;
 
-        /// <summary>登录赠送车辆ID列表（新玩家首次登录自动获得）</summary>
+        // ---- 登录赠送（仅新玩家首次登录生效，Profile目录不存在=新玩家）----
+
+        /// <summary>登录赠送车辆ID列表，如 [167, 168]（空列表=不赠送）</summary>
         [JsonPropertyName("LoginGiftKarts")]
         public List<ushort> LoginGiftKarts { get; set; } = new List<ushort>();
 
-        /// <summary>登录赠送角色ID列表</summary>
+        /// <summary>登录赠送角色ID列表（空列表=不赠送）</summary>
         [JsonPropertyName("LoginGiftCharacters")]
         public List<ushort> LoginGiftCharacters { get; set; } = new List<ushort>();
 
-        /// <summary>登录赠送 Lucci 数量（0=不赠送）</summary>
+        /// <summary>登录赠送 Lucci（游戏金币）数量，在初始值基础上累加（0=不赠送）</summary>
         [JsonPropertyName("LoginGiftLucci")]
         public uint LoginGiftLucci { get; set; } = 0;
 
-        /// <summary>登录赠送 Koin 数量（0=不赠送）</summary>
+        /// <summary>登录赠送 Koin 数量，在初始值基础上累加（0=不赠送）</summary>
         [JsonPropertyName("LoginGiftKoin")]
         public uint LoginGiftKoin { get; set; } = 0;
 
-        /// <summary>新玩家初始 Lucci（默认 1000000）</summary>
+        // ---- 新玩家初始值（首次登录时覆盖硬编码默认值）----
+
+        /// <summary>新玩家初始 Lucci（游戏金币，默认1000000）</summary>
         [JsonPropertyName("InitialLucci")]
         public uint InitialLucci { get; set; } = 1000000;
 
-        /// <summary>新玩家初始 RP（默认 2000000000）</summary>
+        /// <summary>新玩家初始 RP（排位积分=角色等级依据，默认2000000000=满级，0=1级新手）</summary>
         [JsonPropertyName("InitialRP")]
         public uint InitialRP { get; set; } = 2000000000;
 
-        /// <summary>新玩家初始 Koin（默认 1000000）</summary>
+        /// <summary>新玩家初始 Koin（默认1000000）</summary>
         [JsonPropertyName("InitialKoin")]
         public uint InitialKoin { get; set; } = 1000000;
 
-        /// <summary>新玩家初始 Cash（默认 1000000）</summary>
+        /// <summary>新玩家初始 Cash（点券，默认1000000）</summary>
         [JsonPropertyName("InitialCash")]
         public uint InitialCash { get; set; } = 1000000;
 
-        /// <summary>新玩家初始 TcCash（默认 1000000）</summary>
+        /// <summary>新玩家初始 TcCash（限时点券，默认1000000）</summary>
         [JsonPropertyName("InitialTcCash")]
         public uint InitialTcCash { get; set; } = 1000000;
 
-        /// <summary>新玩家初始 VIP 等级（0=无, 5=满级，默认 5）</summary>
+        /// <summary>新玩家初始 VIP 等级（0=无VIP，5=满级VIP，默认5）</summary>
         [JsonPropertyName("InitialPremium")]
         public ushort InitialPremium { get; set; } = 5;
 
-        /// <summary>新玩家初始卡槽切换器数量（0=无, 32767=满，默认 32767）</summary>
+        /// <summary>新玩家初始卡槽切换器数量（0=无，32767=满，默认32767）</summary>
         [JsonPropertyName("InitialSlotChanger")]
         public ushort InitialSlotChanger { get; set; } = 32767;
 
-        private static readonly object _lock = new object();
-        private static ServerConf _instance = new ServerConf();
-        private static string _confPath;
+        // ---- 内部字段 ----
 
-        /// <summary>获取当前配置（只读）</summary>
+        private static readonly object _lock = new object();      // 配置读写锁
+        private static ServerConf _instance = new ServerConf();   // 单例实例
+        private static string _confPath;                          // 配置文件路径
+
+        /// <summary>获取当前配置（只读单例）</summary>
         public static ServerConf Current
         {
             get { return _instance; }
@@ -90,18 +98,22 @@ namespace KartRider
             lock (_lock)
             {
                 _confPath = Path.GetFullPath(Path.Combine(rootDir, "server.conf"));
+
+                // 配置文件不存在时，创建默认配置
                 if (!File.Exists(_confPath))
                 {
-                    // 创建默认配置文件
                     SaveDefault();
                     Console.WriteLine($"[ServerConf] 已创建默认配置: {_confPath}");
                     return;
                 }
 
+                // 读取并反序列化配置文件
                 try
                 {
                     string json = File.ReadAllText(_confPath, Encoding.UTF8);
                     _instance = JsonSerializer.Deserialize<ServerConf>(json) ?? new ServerConf();
+
+                    // 打印加载信息
                     Console.WriteLine($"[ServerConf] 已加载配置: {_confPath}");
                     Console.WriteLine($"  ClubIntro: {_instance.ClubIntro.Substring(0, Math.Min(40, _instance.ClubIntro.Length))}...");
                     Console.WriteLine($"  ClubName: {_instance.ClubName}");
@@ -115,6 +127,7 @@ namespace KartRider
                 }
                 catch (Exception ex)
                 {
+                    // 加载失败时使用默认配置，不中断启动
                     Console.WriteLine($"[ServerConf] 加载配置失败: {ex.Message}，使用默认配置");
                     _instance = new ServerConf();
                 }
@@ -122,13 +135,13 @@ namespace KartRider
         }
 
         /// <summary>
-        /// 保存默认配置文件
+        /// 保存默认配置文件（首次启动时自动创建）
         /// </summary>
         private static void SaveDefault()
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
+                var options = new JsonSerializerOptions { WriteIndented = true };  // 缩进格式，方便手动编辑
                 string json = JsonSerializer.Serialize(new ServerConf(), options);
                 File.WriteAllText(_confPath, json, Encoding.UTF8);
             }
@@ -139,14 +152,14 @@ namespace KartRider
         }
 
         /// <summary>
-        /// 判断玩家是否需要登录赠送（Profile 目录不存在 = 新玩家）
+        /// 判断是否有登录赠送配置（任一字段非零/非空即返回true）
         /// </summary>
         public bool HasLoginGifts()
         {
-            return (LoginGiftKarts != null && LoginGiftKarts.Count > 0)
-                || (LoginGiftCharacters != null && LoginGiftCharacters.Count > 0)
-                || LoginGiftLucci > 0
-                || LoginGiftKoin > 0;
+            return (LoginGiftKarts != null && LoginGiftKarts.Count > 0)   // 有赠送车辆
+                || (LoginGiftCharacters != null && LoginGiftCharacters.Count > 0)  // 有赠送角色
+                || LoginGiftLucci > 0   // 有赠送Lucci
+                || LoginGiftKoin > 0;   // 有赠送Koin
         }
     }
 }
