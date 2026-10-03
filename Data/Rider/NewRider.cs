@@ -247,6 +247,14 @@ namespace RiderData
                 if (!excludedKeys.Contains(itemCatId))
                 {
                     List<List<ushort>> items = new List<List<ushort>>();
+                    // 空类别保护：客户端拿到"整类全 0 件"的目录包会闪退（与跳过类别同一铁律）。
+                    // 若该类别没有任何已拥有道具，则保留首条为可见，确保类别非空。
+                    bool keepFirstVisible = false;
+                    if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
+                    {
+                        keepFirstVisible = !category.Value.Keys.Any(k => ownedItems.Contains((itemCatId, k)));
+                    }
+                    bool firstEntry = true;
                     foreach (var item in category.Value)
                     {
                         ushort sn = 0;
@@ -258,7 +266,9 @@ namespace RiderData
                         }
                         // 购买模式：未拥有的道具数量置 0（客户端据此不显示），
                         // 注意仍然下发该条目（不跳过），否则客户端因缺失目录条目闪退
-                        bool isOwned = ownedItems == null || ownedItems.Contains((itemCatId, id));
+                        bool isOwned = ownedItems == null || ownedItems.Contains((itemCatId, id))
+                                       || (keepFirstVisible && firstEntry);
+                        firstEntry = false;
                         if (ServerConf.Current.PurchaseOnlyMode && !isOwned)
                         {
                             num = 0;
