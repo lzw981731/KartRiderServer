@@ -1077,12 +1077,13 @@ namespace RiderData
                         oPacket.WriteUShort(tempList[f][0]);
                         oPacket.WriteUShort(tempList[f][1]);
                         oPacket.WriteUShort(tempList[f][2]);
+                        ushort id = tempList[f][0];
+                        bool owned = ownedItems == null || ownedItems.Contains((itemCat, id));
                         // 购买模式：按 (itemCatId, itemId) 二元组匹配（防止跨类别 itemId 相同导致误判）
                         byte preventItem;
                         if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
                         {
-                            ushort itemId = tempList[f][0];
-                            preventItem = ownedItems.Contains((itemCat, itemId)) ? (byte)0 : (byte)1;
+                            preventItem = owned ? (byte)0 : (byte)1;
                         }
                         else
                         {
@@ -1090,7 +1091,17 @@ namespace RiderData
                         }
                         oPacket.WriteByte(preventItem);
                         oPacket.WriteByte(0);
-                        oPacket.WriteShort(-1);
+                        // 期限字段：原版恒为 -1（无限制/永久），会让客户端认为玩家已拥有该道具的永久版，
+                        // 导致购买限时/永久角色时被客户端本地拦截（弹"车库中存在没有使用期限限制的道具"）。
+                        // 未拥有的道具改发 0，让客户端不再误判为已持有永久版。
+                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null && !owned)
+                        {
+                            oPacket.WriteShort(0);
+                        }
+                        else
+                        {
+                            oPacket.WriteShort(-1);
+                        }
                         oPacket.WriteShort(0);
                         oPacket.WriteByte(0);
                         oPacket.WriteByte(0);
