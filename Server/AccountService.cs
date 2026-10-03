@@ -57,6 +57,9 @@ namespace KartRider
         private static string _accountsPath;
         private static HttpListener _httpListener;
         private static CancellationTokenSource _cts;
+        private static FileSystemWatcher _watcher;
+        private static volatile bool _skipWatcherReload;
+        private static System.Threading.Timer _reloadDebounce;
 
         /// <summary>已登录 token → 小写账号名（内存缓存，重启失效）</summary>
         private static readonly ConcurrentDictionary<string, string> _tokens = new ConcurrentDictionary<string, string>();
@@ -77,6 +80,7 @@ namespace KartRider
         {
             _accountsPath = Path.GetFullPath(Path.Combine(profileDir, "accounts.json"));
             Load();
+            StartWatcher();
             Console.WriteLine($"[AccountService] 已加载 {_store.Accounts.Count} 个账号，认证={(Enabled ? "开启" : "关闭")}");
         }
 
@@ -100,6 +104,8 @@ namespace KartRider
         {
             _cts?.Cancel();
             _httpListener?.Stop();
+            _watcher?.Dispose();
+            _reloadDebounce?.Dispose();
         }
 
         // ---- 公开查询接口 ----
@@ -488,6 +494,53 @@ namespace KartRider
             }
         }
 
+        /// <summary>
+        /// 启动文件监视器，accounts.json 被外部修改时自动重新加载
+        /// </summary>
+        private static void StartWatcher()
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(_accountsPath);
+                string filename = Path.GetFileName(_accountsPath);
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
+
+                _reloadDebounce = new System.Threading.Timer(_ =>
+                {
+                    try
+                    {
+                        Load();
+                        Console.WriteLine($"[AccountService] accounts.json 已重新加载（{_store.Accounts.Count} 个账号）");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[AccountService] 重新加载 accounts.json 失败: {ex.Message}");
+                    }
+                }, null, Timeout.Infinite, Timeout.Infinite);
+
+                _watcher = new FileSystemWatcher(dir, filename)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size
+                };
+                _watcher.Changed += (s, e) =>
+                {
+                    if (_skipWatcherReload)
+                    {
+                        _skipWatcherReload = false;
+                        return;
+                    }
+                    // 防抖：500ms 内多次变更只触发一次重载
+                    _reloadDebounce.Change(500, Timeout.Infinite);
+                };
+                _watcher.EnableRaisingEvents = true;
+                Console.WriteLine($"[AccountService] 文件监视已启动（{filename}）");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AccountService] 文件监视启动失败: {ex.Message}，外部修改需重启生效");
+            }
+        }
+
         private static void Save()
         {
             try
@@ -496,6 +549,7 @@ namespace KartRider
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
 
+                _skipWatcherReload = true;
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 string json = JsonSerializer.Serialize(_store, options);
                 File.WriteAllText(_accountsPath, json, Encoding.UTF8);
