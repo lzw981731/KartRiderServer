@@ -216,7 +216,7 @@ namespace RiderData
 
         public static void Items(SessionGroup Parent, string Nickname)
         {
-            // 购买模式下，加载玩家已拥有的道具列表，用于逐项标记 PreventItem
+            // 购买模式下，加载玩家已拥有的道具列表，用于过滤：只发送已拥有的道具
             Dictionary<ushort, HashSet<ushort>> ownedItems = null;
             if (ServerConf.Current.PurchaseOnlyMode)
             {
@@ -234,7 +234,7 @@ namespace RiderData
                     ownedItems[item.itemCatId].Add(item.itemId);
                 }
                 int totalOwned = ownedItems.Values.Sum(v => v.Count);
-                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {totalOwned} 件, 覆盖 {ownedItems.Count} 个类别");
+                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {totalOwned} 件, 覆盖 {ownedItems.Count} 个类别（未拥有道具不发送）");
             }
             foreach (var category in items)
             {
@@ -247,6 +247,14 @@ namespace RiderData
                         ushort sn = 0;
                         ushort num = ProfileService.GetProfileConfig(Nickname)?.Rider?.SlotChanger ?? 0;
                         ushort id = item.Key;
+                        // 购买模式：跳过未拥有的道具（不发送）
+                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
+                        {
+                            if (!ownedItems.TryGetValue(itemCatId, out var ownedIds) || !ownedIds.Contains(id))
+                            {
+                                continue;
+                            }
+                        }
                         if (ValidItemCatIds.Contains(itemCatId))
                         {
                             num = 1;
@@ -1055,21 +1063,15 @@ namespace RiderData
                         oPacket.WriteUShort(tempList[f][0]);
                         oPacket.WriteUShort(tempList[f][1]);
                         oPacket.WriteUShort(tempList[f][2]);
-                        // 购买模式：已拥有=0（可用），未拥有=1（锁定）；非购买模式：沿用全局 PreventItem
+                        // 购买模式下只发送已拥有道具，PreventItem 始终为0（可用）；非购买模式沿用全局开关
                         byte preventItem;
                         if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
                         {
-                            ushort itemId = tempList[f][0];
-                            preventItem = (ownedItems.TryGetValue(itemCat, out var ids) && ids.Contains(itemId)) ? (byte)0 : (byte)1;
+                            preventItem = 0; // 只发已拥有的，无需标记锁定
                         }
                         else
                         {
                             preventItem = (byte)(Program.PreventItem ? 1 : 0);
-                        }
-                        // 调试：每个类别只打印第一个道具的 PreventItem 值
-                        if (f == 0)
-                        {
-                            Console.WriteLine($"[PurchaseOnlyMode] 类别{itemCat} 首个道具id={tempList[f][0]} PreventItem={preventItem} (模式={ServerConf.Current.PurchaseOnlyMode})");
                         }
                         oPacket.WriteByte(preventItem);
                         oPacket.WriteByte(0);
