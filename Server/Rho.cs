@@ -857,7 +857,8 @@ namespace KartRider
                         }
                         // 诊断用：导出商店商品表 stockId -> (itemCatId/itemId/数量/天数/价格)，
                         // 用于核对"商店卖的究竟是不是角色"以及购买提示异常
-                        if (fullName == $"zeta_/{regionCode}/shop/data/stock.kml" && Stock.StockList.Count > 0)
+                        if (fullName == $"zeta_/{regionCode}/shop/data/stock.kml" && Stock.StockList.Count > 0
+                            && !File.Exists(Path.Combine(FileName.ProfileDir, "stockCatalog.txt")))
                         {
                             try
                             {
@@ -899,25 +900,28 @@ namespace KartRider
                                         }
                                         NewRider.items[itemCatId][itemId] = itemName;
                                     }
+                                    // 诊断用：把加载到的道具目录(itemCatId/itemId/itemName)导出到 Profile/itemCatalog.txt，
+                                    // 便于核对"商店卖出商品的itemId"与"客户端目录itemId"是否一致（仅导出一次）
+                                    if (!File.Exists(Path.Combine(FileName.ProfileDir, "itemCatalog.txt")))
+                                    {
+                                        try
+                                        {
+                                            var sb = new System.Text.StringBuilder();
+                                            foreach (var kv in NewRider.items)
+                                            {
+                                                foreach (var kv2 in kv.Value)
+                                                {
+                                                    sb.AppendLine($"catId={kv.Key}\titemId={kv2.Key}\tname={kv2.Value}");
+                                                }
+                                            }
+                                            File.WriteAllText(Path.Combine(FileName.ProfileDir, "itemCatalog.txt"), sb.ToString());
+                                            Console.WriteLine($"[诊断] 道具目录已导出: {Path.Combine(FileName.ProfileDir, "itemCatalog.txt")}");
+                                        }
+                                        catch { }
+                                    }
                                 }
                             }
                         }
-                        // 诊断用：把加载到的道具目录(itemCatId/itemId/itemName)导出到 Profile/itemCatalog.txt，
-                        // 便于核对"商店卖出商品的itemId"与"客户端目录itemId"是否一致
-                        try
-                        {
-                            var sb = new System.Text.StringBuilder();
-                            foreach (var kv in NewRider.items)
-                            {
-                                foreach (var kv2 in kv.Value)
-                                {
-                                    sb.AppendLine($"catId={kv.Key}\titemId={kv2.Key}\tname={kv2.Value}");
-                                }
-                            }
-                            File.WriteAllText(Path.Combine(FileName.ProfileDir, "itemCatalog.txt"), sb.ToString());
-                            Console.WriteLine($"[诊断] 道具目录已导出: {Path.Combine(FileName.ProfileDir, "itemCatalog.txt")}");
-                        }
-                        catch { }
                         if (fullName == $"zeta_/{regionCode}/content/channel.xml")
                         {
                             Console.WriteLine(fullName);
