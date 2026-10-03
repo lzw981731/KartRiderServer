@@ -216,12 +216,12 @@ namespace RiderData
 
         public static void Items(SessionGroup Parent, string Nickname)
         {
-            // 购买模式下，加载玩家已拥有的道具列表，用于标记 PreventItem
-            // 注意：客户端硬依赖全量道具目录，不能跳过道具（否则闪退）
-            Dictionary<ushort, HashSet<ushort>> ownedItems = null;
+            // 购买模式：构建已拥有道具ID集合（仅按itemId匹配，避免目录与NewItem.json的itemCatId映射不一致）
+            // 默认道具白名单：黑妞(3)、皮蛋(4)是默认角色，涂装1/染色1是默认外观
+            HashSet<ushort> ownedItemIds = null;
             if (ServerConf.Current.PurchaseOnlyMode)
             {
-                ownedItems = new Dictionary<ushort, HashSet<ushort>>();
+                ownedItemIds = new HashSet<ushort> { 3, 4, 1 }; // 黑妞、皮蛋、默认涂装/染色(id=1)
                 if (!FileName.FileNames.ContainsKey(Nickname))
                 {
                     FileName.Load(Nickname);
@@ -230,12 +230,9 @@ namespace RiderData
                 var newitemList = Stock.LoadNewItem(filename);
                 foreach (var item in newitemList)
                 {
-                    if (!ownedItems.ContainsKey(item.itemCatId))
-                        ownedItems[item.itemCatId] = new HashSet<ushort>();
-                    ownedItems[item.itemCatId].Add(item.itemId);
+                    ownedItemIds.Add(item.itemId);
                 }
-                int totalOwned = ownedItems.Values.Sum(v => v.Count);
-                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {totalOwned} 件, 覆盖 {ownedItems.Count} 个类别");
+                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {ownedItemIds.Count} 件（含默认白名单）");
             }
             foreach (var category in items)
             {
@@ -300,7 +297,7 @@ namespace RiderData
                             items.Add(add);
                         }
                     }
-                    LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItems);
+                    LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItemIds);
                 }
             }
         }
@@ -1038,7 +1035,7 @@ namespace RiderData
             }
         }
 
-        public static void LoRpGetRiderItemPacket(SessionGroup Parent, ushort itemCat, List<List<ushort>> item, Dictionary<ushort, HashSet<ushort>> ownedItems = null)
+        public static void LoRpGetRiderItemPacket(SessionGroup Parent, ushort itemCat, List<List<ushort>> item, HashSet<ushort> ownedItemIds = null)
         {
             int range = 100;//分批次数
             int times = item.Count / range + (item.Count % range > 0 ? 1 : 0);
@@ -1056,12 +1053,12 @@ namespace RiderData
                         oPacket.WriteUShort(tempList[f][0]);
                         oPacket.WriteUShort(tempList[f][1]);
                         oPacket.WriteUShort(tempList[f][2]);
-                        // 购买模式：已拥有=0（可用），未拥有=1（锁定）；非购买模式沿用全局 PreventItem
+                        // 购买模式：按itemId匹配（忽略itemCatId，避免目录与NewItem.json的类别ID映射不一致）
                         byte preventItem;
-                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
+                        if (ServerConf.Current.PurchaseOnlyMode && ownedItemIds != null)
                         {
                             ushort itemId = tempList[f][0];
-                            preventItem = (ownedItems.TryGetValue(itemCat, out var ids) && ids.Contains(itemId)) ? (byte)0 : (byte)1;
+                            preventItem = ownedItemIds.Contains(itemId) ? (byte)0 : (byte)1;
                         }
                         else
                         {

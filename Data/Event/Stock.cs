@@ -243,6 +243,8 @@ namespace KartRider
         public static bool OwnsItem(string Nickname, ushort ItemId)
         {
             if (ItemId == 0) return true; // 0=未装备，允许
+            // 默认道具白名单：黑妞(3)、皮蛋(4)、默认涂装/染色(1)
+            if (ItemId == 1 || ItemId == 3 || ItemId == 4) return true;
             if (!FileName.FileNames.ContainsKey(Nickname))
             {
                 FileName.Load(Nickname);
@@ -257,14 +259,15 @@ namespace KartRider
         }
 
         /**
-         * 判断玩家是否拥有指定角色（购买模式校验用，itemCatId=1）
-         * 角色买卖与其他道具不同：未购买的试穿角色不予保存，但保留玩家当前角色不变。
+         * 判断玩家是否拥有指定角色（购买模式校验用）
+         * 黑妞(3)和皮蛋(4)是默认角色，始终视为已拥有。
          * @param Nickname 昵称
          * @param CharacterId 角色ID
          */
         public static bool OwnsCharacter(string Nickname, ushort CharacterId)
         {
             if (CharacterId == 0) return true; // 0=未选角色，允许
+            if (CharacterId == 3 || CharacterId == 4) return true; // 黑妞、皮蛋是默认角色
             if (!FileName.FileNames.ContainsKey(Nickname))
             {
                 FileName.Load(Nickname);
@@ -275,7 +278,7 @@ namespace KartRider
                 return false;
             }
             var newitem = LoadNewItem(filename);
-            return newitem.Any(i => i.itemCatId == 1 && i.itemId == CharacterId);
+            return newitem.Any(i => i.itemId == CharacterId);
         }
 
         /**
