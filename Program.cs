@@ -49,6 +49,7 @@ namespace KartRider
             Console.WriteLine("  --locale <id>       LocaleID，默认从 KartRider.pin 读取");
             Console.WriteLine("  --country <id>      nClientLoc，默认从 KartRider.pin 读取");
             Console.WriteLine("  --no-public-ip      跳过公网 IP 探测（内网部署/无外网时更快启动）");
+            Console.WriteLine("  --no-auth           关闭账号认证（允许任意昵称直接登录，兼容旧模式）");
             Console.WriteLine("  -h, --help          显示帮助");
             Console.WriteLine();
             Console.WriteLine("示例: KartRiderServer --root /srv/kart --port 39311");
@@ -94,6 +95,9 @@ namespace KartRider
                             break;
                         case "--no-public-ip":
                             noPublicIp = true;
+                            break;
+                        case "--no-auth":
+                            AccountService.Enabled = false;
                             break;
                         case "-h":
                         case "--help":
