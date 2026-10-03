@@ -249,11 +249,18 @@ namespace RiderData
                         {
                             num = 1;
                         }
+                        // 购买模式：未拥有的道具数量置 0（客户端据此不显示），
+                        // 注意仍然下发该条目（不跳过），否则客户端因缺失目录条目闪退
+                        bool isOwned = ownedItemIds == null || ownedItemIds.Contains(id);
+                        if (ServerConf.Current.PurchaseOnlyMode && !isOwned)
+                        {
+                            num = 0;
+                        }
                         if (itemCatId == 7)
                         {
                             if (id == 3 || id == 4)
                             {
-                                List<ushort> add = new List<ushort> { (ushort)id, (ushort)sn, 1 };
+                                List<ushort> add = new List<ushort> { (ushort)id, (ushort)sn, (ushort)(isOwned ? 1 : 0) };
                                 items.Add(add);
                             }
                             else
@@ -279,7 +286,7 @@ namespace RiderData
                             }
                             else if (id == 3 || id == 89 || id == 97 || id == 98 || id == 99 || id == 100 || id == 106)
                             {
-                                List<ushort> add = new List<ushort> { (ushort)id, (ushort)sn, 1 };
+                                List<ushort> add = new List<ushort> { (ushort)id, (ushort)sn, (ushort)(isOwned ? 1 : 0) };
                                 items.Add(add);
                             }
                         }
