@@ -28,7 +28,7 @@ namespace KartRider
         /// <summary>随机盐</summary>
         public string Salt { get; set; }
 
-        /// <summary>绑定的游戏昵称</summary>
+        /// <summary>绑定的游戏昵称（空=未创角）</summary>
         public string Nickname { get; set; }
 
         /// <summary>注册时间</summary>
@@ -48,7 +48,7 @@ namespace KartRider
     }
 
     /// <summary>
-    /// 账号服务：注册、登录、昵称校验、HTTP API
+    /// 账号服务：注册、登录、创角、昵称校验、HTTP API
     /// </summary>
     public static class AccountService
     {
@@ -113,7 +113,7 @@ namespace KartRider
             if (string.IsNullOrEmpty(nickname)) return false;
             lock (_lock)
             {
-                return _store.Accounts.Values.Any(a => a.Nickname == nickname);
+                return _store.Accounts.Values.Any(a => !string.IsNullOrEmpty(a.Nickname) && a.Nickname == nickname);
             }
         }
 
@@ -125,7 +125,6 @@ namespace KartRider
             if (string.IsNullOrEmpty(token)) return null;
             if (_tokens.TryGetValue(token, out string username))
             {
-                // 检查过期
                 if (_tokenCreatedAt.TryGetValue(token, out DateTime createdAt))
                 {
                     if (DateTime.UtcNow - createdAt > TokenExpiry)
@@ -146,22 +145,47 @@ namespace KartRider
             return null;
         }
 
-        // ---- 注册 ----
+        /// <summary>
+        /// 验证 token 并返回用户名（用于创角等操作）
+        /// </summary>
+        public static string ValidateTokenGetUsername(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return null;
+            if (_tokens.TryGetValue(token, out string username))
+            {
+                if (_tokenCreatedAt.TryGetValue(token, out DateTime createdAt))
+                {
+                    if (DateTime.UtcNow - createdAt > TokenExpiry)
+                    {
+                        _tokens.TryRemove(token, out _);
+                        _tokenCreatedAt.TryRemove(token, out _);
+                        return null;
+                    }
+                }
+                return username;
+            }
+            return null;
+        }
 
-        public static (bool ok, string msg, AccountData account) Register(string username, string password, string nickname)
+        // ---- 注册（昵称可选，支持先注册后创角）----
+
+        public static (bool ok, string msg, AccountData account) Register(string username, string password, string nickname = null)
         {
             if (string.IsNullOrWhiteSpace(username))
                 return (false, "账号名不能为空", null);
             if (string.IsNullOrWhiteSpace(password))
                 return (false, "密码不能为空", null);
-            if (string.IsNullOrWhiteSpace(nickname))
-                return (false, "昵称不能为空", null);
             if (username.Length > 32)
                 return (false, "账号名最长32字符", null);
-            if (nickname.Length > 16)
-                return (false, "昵称最长16字符", null);
             if (password.Length < 4)
                 return (false, "密码至少4位", null);
+
+            // 昵称可选：提供时校验，不提供时留空（后续通过 /create-character 绑定）
+            if (!string.IsNullOrWhiteSpace(nickname))
+            {
+                if (nickname.Length > 16)
+                    return (false, "昵称最长16字符", null);
+            }
 
             string key = username.ToLowerInvariant();
 
@@ -170,9 +194,12 @@ namespace KartRider
                 if (_store.Accounts.ContainsKey(key))
                     return (false, "账号已存在", null);
 
-                // 昵称唯一性检查
-                if (_store.Accounts.Values.Any(a => a.Nickname == nickname))
-                    return (false, "该昵称已被其他账号绑定", null);
+                // 昵称唯一性检查（仅当提供了昵称时）
+                if (!string.IsNullOrWhiteSpace(nickname))
+                {
+                    if (_store.Accounts.Values.Any(a => !string.IsNullOrEmpty(a.Nickname) && a.Nickname == nickname))
+                        return (false, "该昵称已被其他账号绑定", null);
+                }
 
                 string salt = GenerateSalt();
                 string hash = HashPassword(password, salt);
@@ -182,7 +209,7 @@ namespace KartRider
                     Username = key,
                     PasswordHash = hash,
                     Salt = salt,
-                    Nickname = nickname,
+                    Nickname = string.IsNullOrWhiteSpace(nickname) ? "" : nickname,
                     CreatedAt = DateTime.UtcNow,
                     LastLoginAt = DateTime.UtcNow
                 };
@@ -195,21 +222,21 @@ namespace KartRider
 
         // ---- 登录 ----
 
-        public static (bool ok, string msg, string token, string nickname) Login(string username, string password)
+        public static (bool ok, string msg, string token, string nickname, bool hasNickname) Login(string username, string password)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-                return (false, "账号和密码不能为空", null, null);
+                return (false, "账号和密码不能为空", null, null, false);
 
             string key = username.ToLowerInvariant();
 
             lock (_lock)
             {
                 if (!_store.Accounts.TryGetValue(key, out var account))
-                    return (false, "账号不存在", null, null);
+                    return (false, "账号不存在", null, null, false);
 
                 string hash = HashPassword(password, account.Salt);
                 if (hash != account.PasswordHash)
-                    return (false, "密码错误", null, null);
+                    return (false, "密码错误", null, null, false);
 
                 // 生成 token
                 string token = GenerateToken();
@@ -221,7 +248,41 @@ namespace KartRider
 
                 account.LastLoginAt = DateTime.UtcNow;
                 Save();
-                return (true, "登录成功", token, account.Nickname);
+
+                bool hasNick = !string.IsNullOrEmpty(account.Nickname);
+                return (true, "登录成功", token, account.Nickname ?? "", hasNick);
+            }
+        }
+
+        // ---- 创建角色（绑定昵称到已有账号）----
+
+        public static (bool ok, string msg) CreateCharacter(string token, string nickname)
+        {
+            if (string.IsNullOrWhiteSpace(nickname))
+                return (false, "角色名不能为空");
+            if (nickname.Length > 16)
+                return (false, "角色名最长16字符");
+
+            string username = ValidateTokenGetUsername(token);
+            if (string.IsNullOrEmpty(username))
+                return (false, "登录已过期，请重新登录");
+
+            lock (_lock)
+            {
+                if (!_store.Accounts.TryGetValue(username, out var account))
+                    return (false, "账号不存在");
+
+                if (!string.IsNullOrEmpty(account.Nickname))
+                    return (false, "该账号已有角色");
+
+                // 昵称唯一性检查
+                if (_store.Accounts.Values.Any(a => !string.IsNullOrEmpty(a.Nickname) && a.Nickname == nickname))
+                    return (false, "该角色名已被使用");
+
+                account.Nickname = nickname;
+                Save();
+                Console.WriteLine($"[AccountService] 账号 {username} 创建角色: {nickname}");
+                return (true, "角色创建成功");
             }
         }
 
@@ -284,6 +345,10 @@ namespace KartRider
                         result = HandleLogin(body);
                         break;
 
+                    case "/create-character":
+                        result = HandleCreateCharacter(body);
+                        break;
+
                     case "/check":
                         result = HandleCheck(req);
                         break;
@@ -327,12 +392,14 @@ namespace KartRider
             var (ok, msg, account) = Register(data.Username, data.Password, data.Nickname);
             if (ok)
             {
+                bool hasNick = !string.IsNullOrEmpty(account.Nickname);
                 return JsonSerializer.Serialize(new
                 {
                     ok = true,
                     msg,
                     username = account.Username,
-                    nickname = account.Nickname
+                    nickname = account.Nickname ?? "",
+                    hasNickname = hasNick
                 });
             }
             return JsonSerializer.Serialize(new { ok = false, msg });
@@ -344,7 +411,7 @@ namespace KartRider
             if (data == null)
                 return JsonSerializer.Serialize(new { ok = false, msg = "请求格式错误" });
 
-            var (ok, msg, token, nickname) = Login(data.Username, data.Password);
+            var (ok, msg, token, nickname, hasNickname) = Login(data.Username, data.Password);
             if (ok)
             {
                 return JsonSerializer.Serialize(new
@@ -352,15 +419,25 @@ namespace KartRider
                     ok = true,
                     msg,
                     token,
-                    nickname
+                    nickname,
+                    hasNickname
                 });
             }
             return JsonSerializer.Serialize(new { ok = false, msg });
         }
 
+        private static string HandleCreateCharacter(string body)
+        {
+            var data = JsonSerializer.Deserialize<CreateCharacterRequest>(body);
+            if (data == null)
+                return JsonSerializer.Serialize(new { ok = false, msg = "请求格式错误" });
+
+            var (ok, msg) = CreateCharacter(data.Token, data.Nickname);
+            return JsonSerializer.Serialize(new { ok, msg });
+        }
+
         private static string HandleCheck(HttpListenerRequest req)
         {
-            // 检查昵称是否已注册
             string nickname = req.QueryString["nickname"];
             if (string.IsNullOrEmpty(nickname))
                 return JsonSerializer.Serialize(new { ok = false, msg = "缺少 nickname 参数" });
@@ -483,6 +560,15 @@ namespace KartRider
 
             [JsonPropertyName("password")]
             public string Password { get; set; }
+        }
+
+        private class CreateCharacterRequest
+        {
+            [JsonPropertyName("token")]
+            public string Token { get; set; }
+
+            [JsonPropertyName("nickname")]
+            public string Nickname { get; set; }
         }
     }
 }
