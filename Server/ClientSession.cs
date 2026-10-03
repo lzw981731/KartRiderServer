@@ -121,8 +121,10 @@ namespace KartRider
                             initConfig.Rider.Koin = conf.InitialKoin;
                             initConfig.Rider.Cash = conf.InitialCash;
                             initConfig.Rider.TcCash = conf.InitialTcCash;
+                            initConfig.Rider.Premium = conf.InitialPremium;
+                            initConfig.Rider.SlotChanger = conf.InitialSlotChanger;
                             ProfileService.Save(packet.Nickname, initConfig);
-                            Console.WriteLine($"[初始值] {packet.Nickname} Lucci={conf.InitialLucci} RP={conf.InitialRP} Koin={conf.InitialKoin} Cash={conf.InitialCash} TcCash={conf.InitialTcCash}");
+                            Console.WriteLine($"[初始值] {packet.Nickname} Lucci={conf.InitialLucci} RP={conf.InitialRP} Koin={conf.InitialKoin} Cash={conf.InitialCash} TcCash={conf.InitialTcCash} Premium={conf.InitialPremium} SlotChanger={conf.InitialSlotChanger}");
                         }
                         catch (Exception ex)
                         {
