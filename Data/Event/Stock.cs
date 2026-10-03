@@ -27,8 +27,11 @@ namespace KartRider
 
         public static void GetStockItem(SessionGroup Parent, uint stockId)
         {
-            TryGet(stockId, out List<item> itemList);
-            Console.WriteLine(itemList.Count);
+            if (!TryGet(stockId, out List<item> itemList) || itemList == null)
+            {
+                Console.WriteLine($"[商店] 警告 stockId={stockId} 无对应商品数据，无法下发道具");
+                return;
+            }
             foreach (item Item in itemList)
             {
                 if (Item.itemCatId == 3 && Item.expireDay == 0)
@@ -95,11 +98,39 @@ namespace KartRider
 
         public static void ShopBuy(SessionGroup Parent, uint stockId, byte priceType)
         {
+            var priceConfig0 = ProfileService.GetProfileConfig(Parent.Client.Nickname);
+            Console.WriteLine($"[商店] 购买请求 {Parent.Client.Nickname} stockId={stockId} priceType={priceType} | " +
+                $"Cash={priceConfig0?.Rider?.Cash} Lucci={priceConfig0?.Rider?.Lucci} TcCash={priceConfig0?.Rider?.TcCash} Koin={priceConfig0?.Rider?.Koin}");
             if (Stock.PriceList.ContainsKey(stockId))
             {
                 var priceConfig = ProfileService.GetProfileConfig(Parent.Client.Nickname);
+                var p = Stock.PriceList[stockId];
+                Console.WriteLine($"[商店] 商品定价 stockId={stockId} 需 priceType={p.priceType} salePrice={p.salePrice}");
                 var PayBool = Pay(Parent.Client.Nickname, stockId, priceConfig);
+                Console.WriteLine($"[商店] 扣款结果 stockId={stockId} → {(PayBool ? "成功" : "失败")}");
                 ShopBool(Parent, PayBool, stockId);
+            }
+            else
+            {
+                // 商品不在定价表（免费/活动礼包类 stock）：无响应会导致客户端一直等待
+                Console.WriteLine($"[商店] 警告 stockId={stockId} 不在 PriceList 中，无法定价，未回复客户端");
+            }
+        }
+
+        /**
+         * 只判断余额是否足够购买指定商品（不扣款，用于"重复道具检查"等查询场景）
+         */
+        public static bool CanAfford(uint stockId, ProfileConfig priceConfig)
+        {
+            if (!Stock.PriceList.TryGetValue(stockId, out var price)) return false;
+            if (priceConfig?.Rider == null) return false;
+            switch (price.priceType)
+            {
+                case 0: return price.salePrice <= priceConfig.Rider.Cash;
+                case 1: return price.salePrice <= priceConfig.Rider.Lucci;
+                case 2: return price.salePrice <= priceConfig.Rider.TcCash;
+                case 3: return price.salePrice <= priceConfig.Rider.Koin;
+                default: return false;
             }
         }
 

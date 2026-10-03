@@ -104,36 +104,40 @@ public static class CouponList
 
     public static void DuplicatedItem(SessionGroup Parent, uint stockId)
     {
-        var PayBool = false;
-        if (Stock.PriceList.ContainsKey(stockId))
+        // 注意：原实现用"扣款是否成功"来回答客户端的"是否已拥有"查询，
+        // 余额不足会被误报成"已拥有该道具"，且钱够时会真的先扣一次款。
+        // 改为只做查询、不扣款。
+        var priceConfig = ProfileService.GetProfileConfig(Parent.Client.Nickname);
+        bool enough = Stock.PriceList.ContainsKey(stockId)
+            && Stock.CanAfford(stockId, priceConfig);
+        bool owned = false;
+        ushort dupCatId = 0, dupItemId = 0, dupCount = 0;
+        if (Stock.TryGet(stockId, out var items))
         {
-            var priceConfig = ProfileService.GetProfileConfig(Parent.Client.Nickname);
-            PayBool = Stock.Pay(Parent.Client.Nickname, stockId, priceConfig);
+            foreach (var it in items)
+            {
+                if (Stock.OwnsItem(Parent.Client.Nickname, it.itemCatId, it.itemId))
+                {
+                    owned = true;
+                    dupCatId = it.itemCatId;
+                    dupItemId = it.itemId;
+                    dupCount = it.itemCount;
+                    break;
+                }
+            }
         }
+        Console.WriteLine($"[重复检查] {Parent.Client.Nickname} stockId={stockId} 余额充足={enough} 已拥有={owned}" +
+            (owned ? $" 重复道具 catId={dupCatId} itemId={dupItemId}" : ""));
 
-        if (PayBool)
+        using (OutPacket outPacket = new OutPacket("SpRpDuplicatedItemPacket"))
         {
-            using (OutPacket outPacket = new OutPacket("SpRpDuplicatedItemPacket"))
-            {
-                outPacket.WriteInt(0); // 0-验证成功;1-验证失败
-                outPacket.WriteUShort(0); // itemCatId
-                outPacket.WriteUShort(0); // itemId
-                outPacket.WriteByte(0);
-                outPacket.WriteUShort(0); // itemCount
-                Parent.Client.Send(outPacket);
-            }
-        }
-        else
-        {
-            using (OutPacket outPacket = new OutPacket("SpRpDuplicatedItemPacket"))
-            {
-                outPacket.WriteInt(1); // 0-验证成功;1-验证失败
-                outPacket.WriteUShort(0); // itemCatId
-                outPacket.WriteUShort(0); // itemId
-                outPacket.WriteByte(0);
-                outPacket.WriteUShort(0); // itemCount
-                Parent.Client.Send(outPacket);
-            }
+            // 0=非重复(可继续购买); 1=重复(客户端弹"已拥有")，并回填重复的道具信息
+            outPacket.WriteInt(owned ? 1 : 0);
+            outPacket.WriteUShort(dupCatId);
+            outPacket.WriteUShort(dupItemId);
+            outPacket.WriteByte(0);
+            outPacket.WriteUShort(dupCount);
+            Parent.Client.Send(outPacket);
         }
     }
 
