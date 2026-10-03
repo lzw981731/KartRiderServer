@@ -167,6 +167,11 @@ namespace KartRider
             // 客户端表现为点开始游戏后卡死。
             EnsureProfileFiles();
 
+            // ---- 账号认证服务 ----
+            AccountService.Init(profileDir);
+            int accountPort = ListenPort + 3; // 默认 39314
+            AccountService.StartHttpApi(accountPort);
+
             // ---- 启动服务器 ----
             Console.WriteLine("正在启动服务器...");
             try
@@ -188,6 +193,7 @@ namespace KartRider
             Console.WriteLine("=== 服务器已启动 ===");
             Console.WriteLine($"TCP 监听: 0.0.0.0:{ListenPort} (+{ListenPort + 2} 消息)");
             Console.WriteLine($"UDP 监听: 0.0.0.0:{ListenPort} (+{ListenPort + 1} P2P)");
+            Console.WriteLine($"账号 API: 0.0.0.0:{accountPort} (注册/登录)");
             Console.WriteLine("按 Ctrl+C 停止服务器。");
 
             // ---- 阻塞等待 ----
@@ -197,6 +203,7 @@ namespace KartRider
                 {
                     e.Cancel = true;
                     Console.WriteLine("\n正在停止服务器...");
+                    AccountService.StopHttpApi();
                     RouterListener.Stop();
                     cts.Cancel();
                 };

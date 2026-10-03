@@ -58,6 +58,17 @@ namespace KartRider
                     if (packet == null) return;
                     if (string.IsNullOrEmpty(packet.Nickname) && packet.ClientVersion != ProfileService.SettingConfig.ClientVersion)
                         return;
+                    // 账号认证校验：昵称必须已注册，否则拒绝登录
+                    if (!AccountService.IsNicknameRegistered(packet.Nickname))
+                    {
+                        Console.WriteLine($"[账号认证] 拒绝未注册昵称登录: {packet.Nickname}");
+                        using (OutPacket outPacket = new OutPacket("PrCnAuthenLogin"))
+                        {
+                            outPacket.WriteInt(0); // 0 = 认证失败
+                            this.Parent.Client.Send(outPacket);
+                        }
+                        return;
+                    }
                     if (ClientManager.HasClientWithNickname(packet.Nickname))
                     {
                         var existingConfig = ProfileService.GetProfileConfig(packet.Nickname);
