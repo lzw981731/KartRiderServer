@@ -855,6 +855,27 @@ namespace KartRider
                                 }
                             }
                         }
+                        // 诊断用：导出商店商品表 stockId -> (itemCatId/itemId/数量/天数/价格)，
+                        // 用于核对"商店卖的究竟是不是角色"以及购买提示异常
+                        if (fullName == $"zeta_/{regionCode}/shop/data/stock.kml" && Stock.StockList.Count > 0)
+                        {
+                            try
+                            {
+                                var sbStock = new System.Text.StringBuilder();
+                                foreach (var kv in Stock.StockList)
+                                {
+                                    string priceInfo = Stock.PriceList.TryGetValue(kv.Key, out var p)
+                                        ? $"priceType={p.priceType} salePrice={p.salePrice}" : "price=无";
+                                    foreach (var it in kv.Value)
+                                    {
+                                        sbStock.AppendLine($"stockId={kv.Key}\tcatId={it.itemCatId}\titemId={it.itemId}\tcount={it.itemCount}\tdays={it.expireDay}\t{priceInfo}");
+                                    }
+                                }
+                                File.WriteAllText(Path.Combine(FileName.ProfileDir, "stockCatalog.txt"), sbStock.ToString());
+                                Console.WriteLine($"[诊断] 商店商品表已导出: {Path.Combine(FileName.ProfileDir, "stockCatalog.txt")}");
+                            }
+                            catch { }
+                        }
                         if (fullName == $"zeta_/{regionCode}/shop/data/item.kml")
                         {
                             Console.WriteLine(fullName);
