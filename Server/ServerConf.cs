@@ -78,6 +78,12 @@ namespace KartRider
         [JsonPropertyName("InitialSlotChanger")]
         public ushort InitialSlotChanger { get; set; } = 32767;
 
+        // ---- 购买模式 ----
+
+        /// <summary>购买模式：true=道具必须购买才能使用（目录道具按所有权标记锁定/可用），false=所有道具免费可用</summary>
+        [JsonPropertyName("PurchaseOnlyMode")]
+        public bool PurchaseOnlyMode { get; set; } = false;
+
         // ---- 内部字段 ----
 
         private static readonly object _lock = new object();      // 配置读写锁
@@ -126,6 +132,7 @@ namespace KartRider
                         Console.WriteLine($"  LoginGiftLucci: {_instance.LoginGiftLucci}");
                     if (_instance.LoginGiftKoin > 0)
                         Console.WriteLine($"  LoginGiftKoin: {_instance.LoginGiftKoin}");
+                    Console.WriteLine($"  PurchaseOnlyMode: {_instance.PurchaseOnlyMode}");
                 }
                 catch (Exception ex)
                 {
@@ -193,7 +200,10 @@ namespace KartRider
   ""InitialCash"": 1000000,         // 新玩家初始 Cash（点券）
   ""InitialTcCash"": 1000000,       // 新玩家初始 TcCash（限时点券）
   ""InitialPremium"": 5,            // 新玩家初始 VIP 等级（0=无，5=满级）
-  ""InitialSlotChanger"": 32767     // 新玩家初始卡槽切换器（0=无，32767=满）
+  ""InitialSlotChanger"": 32767,    // 新玩家初始卡槽切换器（0=无，32767=满）
+
+  // ==== 购买模式 ====
+  ""PurchaseOnlyMode"": false       // 购买模式（true=道具必须购买才能使用，false=所有道具免费可用）
 }
 ";
                 File.WriteAllText(_confPath, content, Encoding.UTF8);

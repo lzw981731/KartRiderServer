@@ -624,7 +624,8 @@ public class MyRoomData
                     oPacket.WriteUShort(item.itemId);
                     oPacket.WriteUShort(item.itemSn);
                     oPacket.WriteUShort(item.itemCount);
-                    oPacket.WriteByte((byte)((Program.PreventItem ? 1 : 0)));
+                    // 购买模式下已购道具始终可用（PreventItem=0），非购买模式沿用全局开关
+                    oPacket.WriteByte((byte)(ServerConf.Current.PurchaseOnlyMode ? 0 : (Program.PreventItem ? 1 : 0)));
                     oPacket.WriteByte(0);
                     oPacket.WriteTime(item.endTime);
                     oPacket.WriteByte(0);

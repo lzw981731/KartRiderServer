@@ -201,7 +201,8 @@ namespace RiderData
                         oPacket.WriteUShort(item.itemId);
                         oPacket.WriteUShort(item.itemSn);
                         oPacket.WriteUShort(item.itemCount);
-                        oPacket.WriteByte((byte)((Program.PreventItem ? 1 : 0)));
+                        // 购买模式下已购道具始终可用（PreventItem=0），非购买模式沿用全局开关
+                        oPacket.WriteByte((byte)(ServerConf.Current.PurchaseOnlyMode ? 0 : (Program.PreventItem ? 1 : 0)));
                         oPacket.WriteByte(0);
                         oPacket.WriteTime(item.endTime);
                         oPacket.WriteByte(0);
@@ -215,6 +216,24 @@ namespace RiderData
 
         public static void Items(SessionGroup Parent, string Nickname)
         {
+            // 购买模式下，加载玩家已拥有的道具列表，用于逐项标记 PreventItem
+            Dictionary<ushort, HashSet<ushort>> ownedItems = null;
+            if (ServerConf.Current.PurchaseOnlyMode)
+            {
+                ownedItems = new Dictionary<ushort, HashSet<ushort>>();
+                if (!FileName.FileNames.ContainsKey(Nickname))
+                {
+                    FileName.Load(Nickname);
+                }
+                var filename = FileName.FileNames[Nickname];
+                var newitemList = Stock.LoadNewItem(filename);
+                foreach (var item in newitemList)
+                {
+                    if (!ownedItems.ContainsKey(item.itemCatId))
+                        ownedItems[item.itemCatId] = new HashSet<ushort>();
+                    ownedItems[item.itemCatId].Add(item.itemId);
+                }
+            }
             foreach (var category in items)
             {
                 ushort itemCatId = category.Key;
@@ -278,7 +297,7 @@ namespace RiderData
                             items.Add(add);
                         }
                     }
-                    LoRpGetRiderItemPacket(Parent, itemCatId, items);
+                    LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItems);
                 }
             }
         }
@@ -1016,7 +1035,7 @@ namespace RiderData
             }
         }
 
-        public static void LoRpGetRiderItemPacket(SessionGroup Parent, ushort itemCat, List<List<ushort>> item)
+        public static void LoRpGetRiderItemPacket(SessionGroup Parent, ushort itemCat, List<List<ushort>> item, Dictionary<ushort, HashSet<ushort>> ownedItems = null)
         {
             int range = 100;//分批次数
             int times = item.Count / range + (item.Count % range > 0 ? 1 : 0);
@@ -1034,7 +1053,18 @@ namespace RiderData
                         oPacket.WriteUShort(tempList[f][0]);
                         oPacket.WriteUShort(tempList[f][1]);
                         oPacket.WriteUShort(tempList[f][2]);
-                        oPacket.WriteByte((byte)((Program.PreventItem ? 1 : 0)));
+                        // 购买模式：已拥有=0（可用），未拥有=1（锁定）；非购买模式：沿用全局 PreventItem
+                        byte preventItem;
+                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
+                        {
+                            ushort itemId = tempList[f][0];
+                            preventItem = (ownedItems.TryGetValue(itemCat, out var ids) && ids.Contains(itemId)) ? (byte)0 : (byte)1;
+                        }
+                        else
+                        {
+                            preventItem = (byte)(Program.PreventItem ? 1 : 0);
+                        }
+                        oPacket.WriteByte(preventItem);
                         oPacket.WriteByte(0);
                         oPacket.WriteShort(-1);
                         oPacket.WriteShort(0);
