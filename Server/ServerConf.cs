@@ -44,6 +44,26 @@ namespace KartRider
         [JsonPropertyName("LoginGiftKoin")]
         public uint LoginGiftKoin { get; set; } = 0;
 
+        /// <summary>新玩家初始 Lucci（默认 1000000）</summary>
+        [JsonPropertyName("InitialLucci")]
+        public uint InitialLucci { get; set; } = 1000000;
+
+        /// <summary>新玩家初始 RP（默认 2000000000）</summary>
+        [JsonPropertyName("InitialRP")]
+        public uint InitialRP { get; set; } = 2000000000;
+
+        /// <summary>新玩家初始 Koin（默认 1000000）</summary>
+        [JsonPropertyName("InitialKoin")]
+        public uint InitialKoin { get; set; } = 1000000;
+
+        /// <summary>新玩家初始 Cash（默认 1000000）</summary>
+        [JsonPropertyName("InitialCash")]
+        public uint InitialCash { get; set; } = 1000000;
+
+        /// <summary>新玩家初始 TcCash（默认 1000000）</summary>
+        [JsonPropertyName("InitialTcCash")]
+        public uint InitialTcCash { get; set; } = 1000000;
+
         private static readonly object _lock = new object();
         private static ServerConf _instance = new ServerConf();
         private static string _confPath;

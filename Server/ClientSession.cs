@@ -100,20 +100,37 @@ namespace KartRider
 
                     // ---- 登录赠送（必须在 FileName.Load 之前检测，Load 会创建目录和文件）----
                     var conf = ServerConf.Current;
-                    if (conf.HasLoginGifts())
+                    string newPlayerDir = Path.GetFullPath(Path.Combine(FileName.ProfileDir, packet.Nickname));
+                    bool isNewPlayer = !Directory.Exists(newPlayerDir);
+                    if (isNewPlayer && conf.HasLoginGifts())
                     {
-                        string newPlayerDir = Path.GetFullPath(Path.Combine(FileName.ProfileDir, packet.Nickname));
-                        bool isNewPlayer = !Directory.Exists(newPlayerDir);
-                        if (isNewPlayer)
-                        {
-                            GrantLoginGifts(packet.Nickname, conf);
-                        }
+                        GrantLoginGifts(packet.Nickname, conf);
                     }
 
                     FileName.Load(packet.Nickname);
                     Bingo.LoadProgress(packet.Nickname);
 
-                    // ---- 应用待赠送货币（GrantLoginGifts 在 Load 之前标记）----
+                    // ---- 新玩家：用 server.conf 初始值覆盖硬编码默认值 ----
+                    if (isNewPlayer)
+                    {
+                        try
+                        {
+                            var initConfig = ProfileService.GetProfileConfig(packet.Nickname);
+                            initConfig.Rider.Lucci = conf.InitialLucci;
+                            initConfig.Rider.RP = conf.InitialRP;
+                            initConfig.Rider.Koin = conf.InitialKoin;
+                            initConfig.Rider.Cash = conf.InitialCash;
+                            initConfig.Rider.TcCash = conf.InitialTcCash;
+                            ProfileService.Save(packet.Nickname, initConfig);
+                            Console.WriteLine($"[初始值] {packet.Nickname} Lucci={conf.InitialLucci} RP={conf.InitialRP} Koin={conf.InitialKoin} Cash={conf.InitialCash} TcCash={conf.InitialTcCash}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[初始值] {packet.Nickname} 设置失败: {ex.Message}");
+                        }
+                    }
+
+                    // ---- 应用待赠送货币（GrantLoginGifts 在 Load 之前标记，在初始值之后累加）----
                     if (_pendingGiftLucci > 0 || _pendingGiftKoin > 0)
                     {
                         try
