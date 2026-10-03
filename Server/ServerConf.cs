@@ -66,11 +66,11 @@ namespace KartRider
 
         /// <summary>新玩家初始 VIP 等级（0=无, 5=满级，默认 5）</summary>
         [JsonPropertyName("InitialPremium")]
-        public int InitialPremium { get; set; } = 5;
+        public ushort InitialPremium { get; set; } = 5;
 
         /// <summary>新玩家初始卡槽切换器数量（0=无, 32767=满，默认 32767）</summary>
         [JsonPropertyName("InitialSlotChanger")]
-        public int InitialSlotChanger { get; set; } = 32767;
+        public ushort InitialSlotChanger { get; set; } = 32767;
 
         private static readonly object _lock = new object();
         private static ServerConf _instance = new ServerConf();
