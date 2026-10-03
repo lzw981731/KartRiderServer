@@ -56,6 +56,12 @@ namespace KartRider
                     string dataPacket = Base64Helper.Decode(iPacket.ReadString(true));
                     DataPacket packet = JsonHelper.Deserialize<DataPacket>(dataPacket);
                     if (packet == null) return;
+                    // 反转义 \uXXXX 序列（客户端可能将中文昵称双重转义为字面量 \u7279 等）
+                    if (packet.Nickname != null && packet.Nickname.Contains("\\u"))
+                    {
+                        try { packet.Nickname = System.Text.RegularExpressions.Regex.Unescape(packet.Nickname); }
+                        catch { }
+                    }
                     if (string.IsNullOrEmpty(packet.Nickname) && packet.ClientVersion != ProfileService.SettingConfig.ClientVersion)
                         return;
                     // 账号认证校验：昵称必须已注册，否则拒绝登录
