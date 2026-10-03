@@ -216,7 +216,8 @@ namespace RiderData
 
         public static void Items(SessionGroup Parent, string Nickname)
         {
-            // 购买模式下，加载玩家已拥有的道具列表，用于过滤未拥有道具
+            // 购买模式下，加载玩家已拥有的道具列表，用于标记 PreventItem
+            // 注意：客户端硬依赖全量道具目录，不能跳过道具（否则闪退）
             Dictionary<ushort, HashSet<ushort>> ownedItems = null;
             if (ServerConf.Current.PurchaseOnlyMode)
             {
@@ -234,7 +235,7 @@ namespace RiderData
                     ownedItems[item.itemCatId].Add(item.itemId);
                 }
                 int totalOwned = ownedItems.Values.Sum(v => v.Count);
-                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {totalOwned} 件, 覆盖 {ownedItems.Count} 个类别（未拥有不发送）");
+                Console.WriteLine($"[PurchaseOnlyMode] {Nickname} 已拥有道具: {totalOwned} 件, 覆盖 {ownedItems.Count} 个类别");
             }
             foreach (var category in items)
             {
@@ -247,14 +248,6 @@ namespace RiderData
                         ushort sn = 0;
                         ushort num = ProfileService.GetProfileConfig(Nickname)?.Rider?.SlotChanger ?? 0;
                         ushort id = item.Key;
-                        // 购买模式：跳过未拥有的道具
-                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
-                        {
-                            if (!ownedItems.TryGetValue(itemCatId, out var ownedIds) || !ownedIds.Contains(id))
-                            {
-                                continue;
-                            }
-                        }
                         if (ValidItemCatIds.Contains(itemCatId))
                         {
                             num = 1;
@@ -307,11 +300,7 @@ namespace RiderData
                             items.Add(add);
                         }
                     }
-                    // 购买模式下空类别不发包（避免客户端闪退）
-                    if (items.Count > 0)
-                    {
-                        LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItems);
-                    }
+                    LoRpGetRiderItemPacket(Parent, itemCatId, items, ownedItems);
                 }
             }
         }
@@ -1067,11 +1056,12 @@ namespace RiderData
                         oPacket.WriteUShort(tempList[f][0]);
                         oPacket.WriteUShort(tempList[f][1]);
                         oPacket.WriteUShort(tempList[f][2]);
-                        // 购买模式下只发已拥有道具，PreventItem 始终为0；非购买模式沿用全局开关
+                        // 购买模式：已拥有=0（可用），未拥有=1（锁定）；非购买模式沿用全局 PreventItem
                         byte preventItem;
                         if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null)
                         {
-                            preventItem = 0;
+                            ushort itemId = tempList[f][0];
+                            preventItem = (ownedItems.TryGetValue(itemCat, out var ids) && ids.Contains(itemId)) ? (byte)0 : (byte)1;
                         }
                         else
                         {
