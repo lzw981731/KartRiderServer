@@ -120,7 +120,7 @@ namespace KartRider
                     if (conf.HasLoginGifts())
                     {
                         var filename = FileName.FileNames[packet.Nickname];
-                        bool isNewPlayer = !File.Exists(filename.NewKart_LoadFile) && !File.Exists(filename.Launcher_LoadFile);
+                        bool isNewPlayer = !File.Exists(filename.NewKart_LoadFile) && !File.Exists(filename.config_path);
                         if (isNewPlayer)
                         {
                             GrantLoginGifts(packet.Nickname, conf);
