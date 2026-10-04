@@ -3698,8 +3698,8 @@ namespace KartRider
                         {
                             outPacket.WriteInt(action); // 回显 action
                             outPacket.WriteInt(0);     // 0=校验通过/可购买
+                            this.Parent.Client.Send(outPacket);
                         }
-                        this.Parent.Client.Send(outPacket);
                         return;
                     }
                     else if (hash == Adler32Helper.GenerateAdler32_ASCII("PqTimeShopOpenTimePacket", 0))
