@@ -1091,17 +1091,10 @@ namespace RiderData
                         }
                         oPacket.WriteByte(preventItem);
                         oPacket.WriteByte(0);
-                        // 期限字段：原版恒为 -1（无限制/永久），会让客户端认为玩家已拥有该道具的永久版，
-                        // 导致购买限时/永久角色时被客户端本地拦截（弹"车库中存在没有使用期限限制的道具"）。
-                        // 未拥有的道具改发 0，让客户端不再误判为已持有永久版。
-                        if (ServerConf.Current.PurchaseOnlyMode && ownedItems != null && !owned)
-                        {
-                            oPacket.WriteShort(0);
-                        }
-                        else
-                        {
-                            oPacket.WriteShort(-1);
-                        }
+                        // 期限字段：原版恒为 -1（无限制/永久）。
+                        // 曾尝试给未拥有道具改发 0 以解除购买拦截，但实测导致客户端闪退
+                        // （服务端无异常，客户端在装备界面断开），故恢复恒为 -1。
+                        oPacket.WriteShort(-1);
                         oPacket.WriteShort(0);
                         oPacket.WriteByte(0);
                         oPacket.WriteByte(0);
