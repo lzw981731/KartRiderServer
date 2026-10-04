@@ -3689,15 +3689,15 @@ namespace KartRider
                     }
                     else if (hash == Adler32Helper.GenerateAdler32_ASCII("PqPersonalShopActionCheckPacket", 0))
                     {
-                        // 客户端点购买角色/道具前会发"动作检查"包，原版无 handler，导致客户端收不到回复
-                        // 卡在"已拥有"弹窗、且不再发 SpReqNormalShopBuyItemPacket。
-                        // 这里回一个最小确认包（PrPersonalShopActionCheckPacket = hash 3275164724），让客户端继续正常购买流程。
-                        // 字段含义待实测微调：先回显 action，第二个 int 作校验结果(0=通过)。
-                        int action = iPacket.ReadInt();
+                        // 客户端点购买角色/道具前会发"动作检查"包（PqPersonalShopActionCheckPacket），
+                        // 原版无 handler → 客户端收不到回复 → 卡在"已拥有"弹窗、且不再发 SpReqNormalShopBuyItemPacket。
+                        // 同系列 PrPersonalShopUserDataPacket 正常工作、回复固定 WriteInt(0);WriteInt(0)，
+                        // 故 ActionCheck 的回复沿用同样的最简结构（不回显 action，避免客户端把回显值当字段用导致解析错位/断流）。
+                        iPacket.ReadInt(); // 跳过 action 字段
                         using (OutPacket outPacket = new OutPacket("PrPersonalShopActionCheckPacket"))
                         {
-                            outPacket.WriteInt(action); // 回显 action
-                            outPacket.WriteInt(0);     // 0=校验通过/可购买
+                            outPacket.WriteInt(0);
+                            outPacket.WriteInt(0);
                             this.Parent.Client.Send(outPacket);
                         }
                         return;
