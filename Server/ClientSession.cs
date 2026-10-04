@@ -3693,7 +3693,7 @@ namespace KartRider
                         // 原版无 handler → 客户端收不到回复 → 卡在"已拥有"弹窗、且不再发 SpReqNormalShopBuyItemPacket。
                         // 实测：回固定 2 个 int(0,0) 会令客户端解析错位断流，说明它期望回显请求的全部参数。
                         // 故此处原样回显请求 payload，末尾追加一个状态 int(0=通过) 作收尾。
-                        int remain = iPacket.Remaining;
+                        int remain = iPacket.Available;
                         byte[] payload = iPacket.ReadBytes(remain);
                         using (OutPacket outPacket = new OutPacket("PrPersonalShopActionCheckPacket"))
                         {
